@@ -69,3 +69,26 @@ async def framework_coverage(db=Depends(get_db), current_user: dict = Depends(ge
         current_user["tenant_id"],
     )
     return [dict(r) for r in rows]
+
+
+@router.get("/recent-activity")
+async def recent_activity(db=Depends(get_db), current_user: dict = Depends(get_current_user)):
+    # Get last 10 events (incidents + CAPAs) ordered by created_at
+    incidents = await db.fetch(
+        """SELECT 'incident' as type, incident_number as reference, title, created_at
+           FROM incidents WHERE tenant_id = $1::uuid
+           ORDER BY created_at DESC LIMIT 5""",
+        current_user["tenant_id"],
+    )
+    capas = await db.fetch(
+        """SELECT 'capa' as type, capa_number as reference, title, created_at
+           FROM capas WHERE tenant_id = $1::uuid
+           ORDER BY created_at DESC LIMIT 5""",
+        current_user["tenant_id"],
+    )
+    combined = sorted(
+        [dict(r) for r in incidents] + [dict(r) for r in capas],
+        key=lambda x: x["created_at"],
+        reverse=True,
+    )[:10]
+    return combined
