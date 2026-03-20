@@ -20,6 +20,7 @@ interface DashboardHomeProps {
   token: string;
   onNavigate: (page: string) => void;
   onOpenChat?: (message: string) => void;
+  selectedSiteId?: string | null;
 }
 
 interface BriefingPattern {
@@ -192,7 +193,7 @@ function AiPromptBar({ prompts, onOpenChat }: { prompts: string[]; onOpenChat?: 
   );
 }
 
-export default function DashboardHome({ token, onNavigate, onOpenChat }: DashboardHomeProps) {
+export default function DashboardHome({ token, onNavigate, onOpenChat, selectedSiteId }: DashboardHomeProps) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [incidentsOverTime, setIncidentsOverTime] = useState<IncidentWeek[]>([]);
   const [capaStatus, setCapaStatus] = useState<CapaStatus[]>([]);
@@ -205,6 +206,7 @@ export default function DashboardHome({ token, onNavigate, onOpenChat }: Dashboa
   const [showBriefingModal, setShowBriefingModal] = useState(false);
   const [auditReadiness, setAuditReadiness] = useState<AuditReadiness | null>(null);
   const [showAuditModal, setShowAuditModal] = useState(false);
+  const [globalMetrics, setGlobalMetrics] = useState<any>(null);
   const [alerts, setAlerts] = useState<{id: string; incident_number: string; title: string; severity: string; location: string; created_at: string}[]>([]);
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
@@ -214,8 +216,9 @@ export default function DashboardHome({ token, onNavigate, onOpenChat }: Dashboa
   });
 
   useEffect(() => {
+    const siteParam = selectedSiteId ? `?site_id=${selectedSiteId}` : "";
     Promise.all([
-      api<Summary>("/api/dashboard/summary", { token }),
+      api<Summary>(`/api/dashboard/summary${siteParam}`, { token }),
       api<IncidentWeek[]>("/api/dashboard/incidents-over-time", { token }),
       api<CapaStatus[]>("/api/dashboard/capa-status", { token }),
       api<FrameworkCoverage[]>("/api/dashboard/framework-coverage", { token }),
@@ -244,7 +247,12 @@ export default function DashboardHome({ token, onNavigate, onOpenChat }: Dashboa
     api<{id: string; incident_number: string; title: string; severity: string; location: string; created_at: string}[]>(
       "/api/incidents/alerts", { token }
     ).then(setAlerts).catch(console.error);
-  }, [token]);
+
+    // Fetch global metrics
+    api<any>("/api/dashboard/global-metrics", { token })
+      .then(setGlobalMetrics)
+      .catch(console.error);
+  }, [token, selectedSiteId]);
 
   if (loading) {
     return (
@@ -519,6 +527,115 @@ export default function DashboardHome({ token, onNavigate, onOpenChat }: Dashboa
           )}
         </div>
       </div>
+
+      {/* Global EHS Metrics */}
+      {globalMetrics && (
+        <div className="space-y-4 mb-8">
+          {/* Global rates bar */}
+          <div className="bg-navy-800 rounded-xl border border-navy-700 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold text-sm">Global Safety Metrics</h3>
+              <span className="text-xs text-gray-500">{globalMetrics.global.total_employees} employees across {globalMetrics.global.total_sites} sites</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* TRIR */}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">{globalMetrics.global.trir}</div>
+                <div className="text-xs text-gray-400 mt-1">TRIR</div>
+                <div className={`text-xs mt-1 ${globalMetrics.global.trir < globalMetrics.benchmarks.trir.industry_avg ? 'text-green-400' : 'text-red-400'}`}>
+                  Industry avg: {globalMetrics.benchmarks.trir.industry_avg}
+                </div>
+              </div>
+              {/* DART */}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">{globalMetrics.global.dart}</div>
+                <div className="text-xs text-gray-400 mt-1">DART Rate</div>
+                <div className={`text-xs mt-1 ${globalMetrics.global.dart < globalMetrics.benchmarks.dart.industry_avg ? 'text-green-400' : 'text-red-400'}`}>
+                  Industry avg: {globalMetrics.benchmarks.dart.industry_avg}
+                </div>
+              </div>
+              {/* Near-Miss % */}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">{globalMetrics.global.near_miss_reporting_pct}%</div>
+                <div className="text-xs text-gray-400 mt-1">Near-Miss Rate</div>
+                <div className={`text-xs mt-1 ${globalMetrics.global.near_miss_reporting_pct >= 50 ? 'text-green-400' : 'text-amber-400'}`}>
+                  Target: {globalMetrics.benchmarks.near_miss_target}%
+                </div>
+              </div>
+              {/* Investigation closure */}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">{globalMetrics.global.investigation_closure_pct}%</div>
+                <div className="text-xs text-gray-400 mt-1">Investigation Closure</div>
+                <div className="text-xs text-gray-400 mt-1">
+                  {globalMetrics.global.total_incidents} total incidents
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Site Benchmarking Table */}
+          <div className="bg-navy-800 rounded-xl border border-navy-700 p-5">
+            <h3 className="text-white font-semibold text-sm mb-4">Site Benchmarking</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-navy-700">
+                    <th className="text-left text-gray-400 font-medium py-2 px-2">Site</th>
+                    <th className="text-center text-gray-400 font-medium py-2 px-2">Employees</th>
+                    <th className="text-center text-gray-400 font-medium py-2 px-2">Incidents</th>
+                    <th className="text-center text-gray-400 font-medium py-2 px-2">TRIR</th>
+                    <th className="text-center text-gray-400 font-medium py-2 px-2">DART</th>
+                    <th className="text-center text-gray-400 font-medium py-2 px-2">Near-Miss %</th>
+                    <th className="text-center text-gray-400 font-medium py-2 px-2">Closure %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {globalMetrics.sites.map((site: any) => (
+                    <tr key={site.code} className="border-b border-navy-700/50 hover:bg-navy-700/30">
+                      <td className="py-2.5 px-2">
+                        <div className="text-white font-medium">{site.name}</div>
+                        <div className="text-gray-500">{site.code}</div>
+                      </td>
+                      <td className="text-center text-gray-300 py-2.5 px-2">{site.employees}</td>
+                      <td className="text-center text-gray-300 py-2.5 px-2">{site.total_incidents}</td>
+                      <td className="text-center py-2.5 px-2">
+                        <span className={site.trir < 2.1 ? 'text-green-400' : site.trir < 4 ? 'text-amber-400' : 'text-red-400'}>
+                          {site.trir}
+                        </span>
+                      </td>
+                      <td className="text-center py-2.5 px-2">
+                        <span className={site.dart < 1.2 ? 'text-green-400' : site.dart < 2.5 ? 'text-amber-400' : 'text-red-400'}>
+                          {site.dart}
+                        </span>
+                      </td>
+                      <td className="text-center py-2.5 px-2">
+                        <span className={site.near_miss_pct >= 50 ? 'text-green-400' : site.near_miss_pct >= 30 ? 'text-amber-400' : 'text-red-400'}>
+                          {site.near_miss_pct}%
+                        </span>
+                      </td>
+                      <td className="text-center py-2.5 px-2">
+                        <span className={site.investigation_closure_pct >= 70 ? 'text-green-400' : site.investigation_closure_pct >= 40 ? 'text-amber-400' : 'text-red-400'}>
+                          {site.investigation_closure_pct}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Global total row */}
+                  <tr className="bg-navy-700/30 font-medium">
+                    <td className="py-2.5 px-2 text-safe">Global Total</td>
+                    <td className="text-center text-white py-2.5 px-2">{globalMetrics.global.total_employees}</td>
+                    <td className="text-center text-white py-2.5 px-2">{globalMetrics.global.total_incidents}</td>
+                    <td className="text-center text-safe py-2.5 px-2">{globalMetrics.global.trir}</td>
+                    <td className="text-center text-safe py-2.5 px-2">{globalMetrics.global.dart}</td>
+                    <td className="text-center text-safe py-2.5 px-2">{globalMetrics.global.near_miss_reporting_pct}%</td>
+                    <td className="text-center text-safe py-2.5 px-2">{globalMetrics.global.investigation_closure_pct}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

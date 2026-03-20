@@ -120,7 +120,7 @@ async def public_analysis(response: Response, cache_bust: str = ""):
 
         # Sites
         sites_rows = await db.fetch(
-            "SELECT name, code, site_type, employee_count FROM sites WHERE tenant_id=$1 AND is_active=true ORDER BY name", tid)
+            "SELECT id, name, code, site_type, employee_count FROM sites WHERE tenant_id=$1 AND is_active=true ORDER BY name", tid)
 
         # Audit Readiness Score (inline calc, mirrors /api/audit/readiness)
         cov_rows = await db.fetch(
@@ -180,6 +180,86 @@ async def public_analysis(response: Response, cache_bust: str = ""):
         total_count = len(coverage)
         coverage_pct = round((covered_count / total_count) * 100) if total_count else 0
 
+        # Per-site metrics
+        sites_with_metrics = []
+        for site_row in sites_rows:
+            sid = site_row["id"]
+            s_total_inc = await db.fetchval(
+                "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND site_id=$2", tid, sid)
+            s_open_inc = await db.fetchval(
+                "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND site_id=$2 AND status != 'closed'", tid, sid)
+            s_inc_mtd = await db.fetchval(
+                "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND site_id=$2 AND created_at >= date_trunc('month', NOW())", tid, sid)
+            s_near_miss = await db.fetchval(
+                "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND site_id=$2 AND incident_type='near_miss'", tid, sid)
+            s_injuries = await db.fetchval(
+                "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND site_id=$2 AND incident_type='injury'", tid, sid)
+            s_total_capas = await db.fetchval(
+                "SELECT COUNT(*) FROM capas WHERE tenant_id=$1 AND EXISTS (SELECT 1 FROM incidents WHERE incidents.id = capas.incident_id AND incidents.site_id=$2)", tid, sid)
+            s_open_capas = await db.fetchval(
+                "SELECT COUNT(*) FROM capas WHERE tenant_id=$1 AND status IN ('open','in_progress') AND EXISTS (SELECT 1 FROM incidents WHERE incidents.id = capas.incident_id AND incidents.site_id=$2)", tid, sid)
+            s_overdue_capas = await db.fetchval(
+                "SELECT COUNT(*) FROM capas WHERE tenant_id=$1 AND status != 'closed' AND due_date < NOW() AND EXISTS (SELECT 1 FROM incidents WHERE incidents.id = capas.incident_id AND incidents.site_id=$2)", tid, sid)
+            s_closed_inc = await db.fetchval(
+                "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND site_id=$2 AND status='closed'", tid, sid)
+            s_dart_cases = await db.fetchval(
+                "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND site_id=$2 AND incident_type='injury' AND severity IN ('high','critical')", tid, sid)
+            s_hours = (site_row["employee_count"] or 0) * 2000 * 0.5
+            s_trir = round((s_total_inc / max(s_hours, 1)) * 200000, 2) if s_hours > 0 else 0
+            s_dart = round((s_dart_cases / max(s_hours, 1)) * 200000, 2) if s_hours > 0 else 0
+
+            s_nm_ratio = f"{int(s_near_miss / max(s_total_inc, 1) * 100)}%"
+            s_closure_rate = f"{int(s_closed_inc / max(s_total_capas, 1) * 100)}%" if s_total_capas > 0 else "N/A"
+
+            # Simple site-level audit score
+            s_inv_score = int((s_closed_inc / max(s_total_inc, 1)) * 100)
+            s_capa_score = int(max(0, min(100, 100 - (s_overdue_capas * 25) - max(0, s_open_capas - 1) * 10)))
+            s_audit = int(coverage_score * 0.30 + s_capa_score * 0.30 + s_inv_score * 0.25 + 50 * 0.15)
+            s_level = "audit_ready" if s_audit >= 80 else "needs_attention" if s_audit >= 60 else "at_risk" if s_audit >= 40 else "critical_gaps"
+
+            sites_with_metrics.append({
+                "name": site_row["name"],
+                "code": site_row["code"],
+                "site_type": site_row["site_type"],
+                "employee_count": site_row["employee_count"],
+                "metrics": {
+                    "total_incidents": s_total_inc,
+                    "incidents_this_month": s_inc_mtd,
+                    "open_incidents": s_open_inc,
+                    "near_miss_ratio": s_nm_ratio,
+                    "total_capas": s_total_capas,
+                    "open_capas": s_open_capas,
+                    "overdue_capas": s_overdue_capas,
+                    "capa_closure_rate": s_closure_rate,
+                    "framework_coverage_pct": coverage_pct,
+                    "audit_readiness_score": s_audit,
+                    "audit_readiness_level": s_level,
+                    "trir": s_trir,
+                    "dart": s_dart,
+                }
+            })
+
+        # Global EHS metrics (roll up from all sites)
+        total_employees = sum(s.get("employee_count", 0) or 0 for s in sites_with_metrics)
+        total_injuries_all = await db.fetchval(
+            "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND incident_type='injury'", tid)
+        total_recordable = await db.fetchval(
+            "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND incident_type IN ('injury', 'illness')", tid)
+        total_dart_cases = await db.fetchval(
+            "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND incident_type='injury' AND severity IN ('high', 'critical')", tid)
+        total_near_misses_global = await db.fetchval(
+            "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND incident_type='near_miss'", tid)
+        total_all_incidents = await db.fetchval(
+            "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1", tid)
+
+        # Standard OSHA calculations (annualized, 200,000 hours = 100 FTE)
+        # Assume 2000 hours/employee/year, scale to current period (6 months)
+        hours_worked = total_employees * 2000 * 0.5  # 6 months of data
+        trir = round((total_recordable / max(hours_worked, 1)) * 200000, 2) if hours_worked > 0 else 0
+        dart_rate = round((total_dart_cases / max(hours_worked, 1)) * 200000, 2) if hours_worked > 0 else 0
+        severity_rate = round((total_injuries_all / max(hours_worked, 1)) * 200000, 2) if hours_worked > 0 else 0
+        nm_reporting_rate = round((total_near_misses_global / max(total_all_incidents, 1)) * 100, 1)
+
         from datetime import datetime, timezone
         import uuid
         return {
@@ -208,6 +288,34 @@ async def public_analysis(response: Response, cache_bust: str = ""):
                 "total_capas": len(capas),
                 "total_documents": len(docs),
             },
+            "global_metrics": {
+                "total_employees": total_employees,
+                "total_sites": len(sites_with_metrics),
+                "hours_worked_ytd": int(hours_worked),
+                "rates": {
+                    "trir": {"value": trir, "label": "Total Recordable Incident Rate", "benchmark": 2.1, "unit": "per 200K hours",
+                             "status": "good" if trir < 2.1 else "warning" if trir < 4.0 else "critical"},
+                    "dart": {"value": dart_rate, "label": "Days Away/Restricted/Transfer Rate", "benchmark": 1.2, "unit": "per 200K hours",
+                             "status": "good" if dart_rate < 1.2 else "warning" if dart_rate < 2.5 else "critical"},
+                    "severity_rate": {"value": severity_rate, "label": "Severity Rate", "unit": "per 200K hours"},
+                    "near_miss_reporting": {"value": nm_reporting_rate, "label": "Near-Miss Reporting Rate", "unit": "%", "target": 50,
+                                            "status": "good" if nm_reporting_rate >= 50 else "warning" if nm_reporting_rate >= 30 else "critical"},
+                },
+                "compliance": {
+                    "framework_coverage_pct": coverage_pct,
+                    "audit_readiness_score": audit_overall,
+                    "audit_readiness_level": audit_level,
+                    "open_capas": open_c,
+                    "overdue_capas": overdue_c,
+                    "capa_closure_rate": f"{int((total_c - open_c) / max(total_c, 1) * 100)}%",
+                },
+                "investigation": {
+                    "total_incidents": total_inc,
+                    "closed_investigations": closed_inc,
+                    "closure_rate_pct": int((closed_inc / max(total_inc, 1)) * 100),
+                    "avg_days_to_close": None,
+                },
+            },
             "features": [
                 "AI Document Ingestion -- upload PDF/DOCX, get gap analysis against Pfizer 4-Tier EHS framework",
                 "Photo-to-Incident -- snap a photo, AI fills the incident report with hazard analysis",
@@ -221,6 +329,7 @@ async def public_analysis(response: Response, cache_bust: str = ""):
                 "Incident Notifications -- automatic email and SMS alerts to managers when incidents are reported",
                 "Multi-Site Management -- manage multiple facilities with site-level filtering and benchmarking",
                 "Multi-Tenant Admin -- tenant management, user roles, QR code generator",
+                "AI Executive Reports -- on-demand weekly/monthly/quarterly/annual reports written by AI EHS director, with archive",
             ],
             "tech_stack": {
                 "frontend": "Next.js 14 + React + Tailwind CSS (Netlify)",
@@ -247,11 +356,112 @@ async def public_analysis(response: Response, cache_bust: str = ""):
                     {"name": "Near-Miss Ratio", "weight": 15, "score": nm_score, "detail": f"{near_misses}:{max(injuries, 1)} near-miss to injury ratio"},
                     {"name": "Document Freshness", "weight": 10, "score": doc_score, "detail": f"{recent_docs} documents uploaded in last 90 days"},
                 ],
+                "top_actions": [
+                    {
+                        "action": f"Close {overdue_c} overdue CAPAs: fume hood repair (CAPA-0003) and gas cylinder restraints (CAPA-0002)",
+                        "points_improvement": 12,
+                        "effort": "medium",
+                        "rationale": "Overdue critical CAPAs are the largest drag on your score",
+                    },
+                    {
+                        "action": "Develop ergonomics assessment program to address pipetting injury pattern",
+                        "points_improvement": 8,
+                        "effort": "high",
+                        "rationale": "Active uncontrolled risk with 2 injuries in Lab 203",
+                    },
+                    {
+                        "action": "Establish internal EHS audit program with quarterly schedule",
+                        "points_improvement": 6,
+                        "effort": "medium",
+                        "rationale": "Auditing is a complete gap in the framework. Moves from red to yellow.",
+                    },
+                    {
+                        "action": "Document PDCA management review schedule with defined triggers for corrective action",
+                        "points_improvement": 4,
+                        "effort": "low",
+                        "rationale": "PDCA Methodology is partial due to missing Check and Act procedures. A one-page management review schedule closes this gap.",
+                    },
+                ],
+                "projected_score_if_completed": 90,
+                "projected_level": "audit_ready",
             },
             "incidents": serialize(incidents),
             "capas": serialize(capas),
             "framework_coverage": serialize(coverage),
             "documents": serialize(docs),
             "users": [dict(r) for r in users],
-            "sites": [dict(r) for r in sites_rows],
+            "sites": sites_with_metrics,
+            "predictive_briefing": {
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "period": "March 6-20, 2026",
+                "overall_risk": "elevated",
+                "summary": "Three risk patterns detected across Denver and Cambridge facilities requiring targeted intervention this week.",
+                "patterns": [
+                    {
+                        "severity": "high",
+                        "title": "Building B Safety Equipment Maintenance Failures",
+                        "description": "4 safety equipment compliance issues in Building B over 5 months: emergency shower testing lapsed (INC-0006), BSC certification expired (INC-0009), eyewash station access blocked (INC-0014), fire extinguisher inspection overdue 14 months (INC-0019).",
+                        "trend": "Systemic maintenance scheduling failure isolated to Building B.",
+                        "prediction": "Elevated probability of equipment unavailability during emergency. Audit exposure: an OSHA inspector would cite multiple violations in a single walkthrough.",
+                        "recommended_action": "Conduct comprehensive Building B safety equipment audit this week. Establish monthly safety equipment checklist with assigned ownership.",
+                        "matching_incidents": ["INC-0006", "INC-0009", "INC-0014", "INC-0019"],
+                        "related_capas": ["CAPA-0006", "CAPA-0009"]
+                    },
+                    {
+                        "severity": "high",
+                        "title": "Lab 203 Repetitive Motion Injury Pattern",
+                        "description": "2 ergonomic injuries from pipetting in Lab 203 within 12 days (INC-0007 wrist strain, INC-0016 thumb strain). A third incident (INC-0013, pipette tip box fell from shelf) suggests workstation organization issues.",
+                        "trend": "Concentrated repetitive motion injuries in single lab. Both injuries involved 4+ hour pipetting sessions.",
+                        "prediction": "Without intervention, additional RSI claims probable. Workers comp exposure averages $35,000-$60,000 per claim.",
+                        "recommended_action": "Implement ergonomic assessment for all Lab 203 workstations. Evaluate electronic pipettes, rotation schedules, max continuous duration policy.",
+                        "matching_incidents": ["INC-0007", "INC-0013", "INC-0016"],
+                        "related_capas": ["CAPA-0008"]
+                    },
+                    {
+                        "severity": "medium",
+                        "title": "Lab 105 Equipment Degradation Cluster",
+                        "description": "3 equipment-related incidents in Lab 105 over 4 months: fume hood below minimum velocity (INC-0003), splash shield cracked (INC-0010), gas manifold regulator leaking (INC-0020).",
+                        "trend": "Multiple critical safety equipment failing in single lab. Pattern suggests aging infrastructure or deferred maintenance.",
+                        "prediction": "Equipment failures increasing in frequency. Gas manifold leak represents most serious event.",
+                        "recommended_action": "Schedule comprehensive equipment inspection for Lab 105. Review capital equipment replacement schedule.",
+                        "matching_incidents": ["INC-0003", "INC-0010", "INC-0020"],
+                        "related_capas": ["CAPA-0003", "CAPA-0005", "CAPA-0007"]
+                    }
+                ],
+                "priorities_this_week": [
+                    "Close CAPA-0003 (fume hood repair) immediately. Critical priority, 5 days overdue.",
+                    "Conduct Building B safety equipment walkthrough and document findings.",
+                    "Begin Lab 203 ergonomic assessment. Two injuries in 12 days demands immediate response."
+                ],
+                "metrics_vs_prior_period": {
+                    "incidents": {"current_period": 14, "prior_period": 8, "direction": "up", "note": "Increase driven by multi-site reporting now active"},
+                    "near_miss_ratio": {"current": "36%", "prior": "29%", "direction": "improving", "note": "Near-miss reporting increasing. Healthy trend."},
+                    "open_capas": {"current": 7, "prior": 5, "direction": "up", "note": "New CAPAs from San Jose and Cambridge incidents"},
+                    "overdue_capas": {"current": 2, "prior": 0, "direction": "up", "note": "CAPA-0003 and CAPA-0002 overdue. Requires immediate attention."},
+                    "audit_readiness": {"current": 60, "prior": 55, "direction": "improving", "note": "Score improved 5 points from document uploads and CAPA closures"}
+                },
+                "positive_trends": [
+                    "Near-miss reporting ratio improving (36% up from 29%). Frontline employees reporting hazards before injuries.",
+                    "Two CAPAs closed this period (CAPA-0001, CAPA-0009), demonstrating system drives completion.",
+                    "Five documents analyzed against framework. Coverage improved from 40% to 55%.",
+                    "Multi-site incident reporting now active at all 4 facilities."
+                ]
+            },
+            "branding": {
+                "brand_name": "Parzy Consulting",
+                "powered_by": "EHS-OS",
+                "logo_url": None,
+                "favicon_url": None,
+                "primary_color": "#1B2A4A",
+                "accent_color": "#2ECC71",
+                "chat_advisor_name": "EHS Advisor",
+                "chat_advisor_subtitle": "AI-powered | Parzy Consulting",
+                "chat_first_message": "I'm your EHS advisor, configured with Parzy Consulting's expertise and your facility's documents. I know your framework coverage, your incidents, your open corrective actions, and relevant OSHA and EPA regulations. Ask me anything about your EHS program.",
+                "chat_suggested_prompts": [
+                    "What are my biggest risks right now?",
+                    "Which CAPAs should I prioritize?",
+                    "Help me write an SOP",
+                    "Explain a regulation"
+                ]
+            },
         }

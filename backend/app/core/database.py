@@ -187,4 +187,17 @@ CREATE INDEX IF NOT EXISTS idx_capas_incident ON capas(incident_id);
 CREATE INDEX IF NOT EXISTS idx_chat_user ON chat_messages(user_id);
 CREATE INDEX IF NOT EXISTS idx_sites_tenant ON sites(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_incidents_site ON incidents(site_id);
+
+CREATE TABLE IF NOT EXISTS reports (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    report_type VARCHAR(20) NOT NULL,
+    period_label TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content JSONB NOT NULL,
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_reports_tenant ON reports(tenant_id);
 """

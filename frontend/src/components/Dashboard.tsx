@@ -10,6 +10,7 @@ import IncidentsPage from "./IncidentsPage";
 import CapaPage from "./CapaPage";
 import AdminPage from "./AdminPage";
 import FeaturesPage from "./FeaturesPage";
+import ReportsPage from "./ReportsPage";
 import ChatPanel from "./ChatPanel";
 
 interface DashboardProps {
@@ -17,7 +18,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type Page = "dashboard" | "documents" | "incidents" | "capas" | "features" | "admin";
+type Page = "dashboard" | "documents" | "incidents" | "capas" | "features" | "admin" | "reports";
 
 export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
@@ -59,13 +60,15 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const renderPage = () => {
     switch (currentPage) {
       case "dashboard":
-        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} onOpenChat={handleOpenChat} />;
+        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} onOpenChat={handleOpenChat} selectedSiteId={selectedSiteId} />;
       case "documents":
         return <DocumentsPage token={token} onOpenChat={handleOpenChat} showToast={showToast} />;
       case "incidents":
         return <IncidentsPage token={token} onOpenChat={handleOpenChat} showToast={showToast} />;
       case "capas":
         return <CapaPage token={token} onOpenChat={handleOpenChat} />;
+      case "reports":
+        return <ReportsPage token={token} onOpenChat={handleOpenChat} />;
       case "features":
         return <FeaturesPage />;
       case "admin":
@@ -96,12 +99,13 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       {/* Chat toggle */}
       <button
         onClick={() => setChatOpen(!chatOpen)}
-        className="fixed right-4 bottom-4 bg-safe hover:bg-green-600 text-white rounded-full p-3 shadow-lg z-50 transition-colors"
-        title="EHS Expert"
+        className="fixed right-4 bottom-4 bg-safe hover:bg-green-600 text-white rounded-full shadow-lg z-50 transition-colors flex items-center gap-2 px-4 py-3"
+        title="Ask an EHS AI Assistant"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
         </svg>
+        <span className="text-sm font-medium">Ask an EHS AI Assistant</span>
       </button>
 
       {/* Chat panel */}

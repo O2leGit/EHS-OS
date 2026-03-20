@@ -452,7 +452,7 @@ async def reseed_demo_data(db):
             "status": "covered",
             "gaps": [],
             "risk": None,
-            "reasoning": "EHS Manual Section 8 establishes incident reporting procedures, investigation methodology (5-Why analysis), OSHA recordkeeping requirements (300/300A/301), and return-to-work protocols. 7 incidents currently tracked in system.",
+            "reasoning": "EHS Manual Section 8 establishes incident reporting procedures, investigation methodology (5-Why analysis), OSHA recordkeeping requirements (300/300A/301), and return-to-work protocols. 28 incidents tracked across 4 sites with 57% investigation closure rate.",
         },
         ("Emergency Preparedness", "300"): {
             "status": "covered",
@@ -525,7 +525,7 @@ async def reseed_demo_data(db):
     # Fix 7 (cont): Add 3 new CAPAs
     # =========================================================================
     new_capas = [
-        ("CAPA-0007", "INC-0020", "Emergency inspection of all compressed gas systems", "corrective", "critical", "open", admin_id, 2,
+        ("CAPA-0007", "INC-0020", "Emergency inspection of all compressed gas systems", "corrective", "critical", "open", admin_id, 8,
          "Immediate inspection of all compressed gas manifolds, regulators, and cylinder connections across both buildings. Replace any components showing wear or damage."),
         ("CAPA-0008", "INC-0016", "Ergonomic assessment for pipetting-intensive roles", "corrective", "high", "open", user_id, 12,
          "Conduct ergonomic assessments for all roles involving >2 hours daily pipetting. Evaluate electronic pipettes, ergonomic grips, and rotation schedules."),

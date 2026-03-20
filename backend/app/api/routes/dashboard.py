@@ -84,6 +84,74 @@ async def framework_coverage(db=Depends(get_db), current_user: dict = Depends(ge
     return [dict(r) for r in rows]
 
 
+@router.get("/global-metrics")
+async def get_global_metrics(db=Depends(get_db), user: dict = Depends(get_current_user)):
+    tid = user["tenant_id"]
+
+    # Get all sites
+    sites = await db.fetch(
+        "SELECT id, name, code, employee_count FROM sites WHERE tenant_id=$1::uuid AND is_active=true", tid)
+
+    total_employees = sum(s["employee_count"] or 0 for s in sites)
+    hours_worked = total_employees * 2000 * 0.5
+
+    # Global counts
+    total_incidents = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid", tid)
+    total_recordable = await db.fetchval(
+        "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND incident_type IN ('injury', 'illness')", tid)
+    dart_cases = await db.fetchval(
+        "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND incident_type='injury' AND severity IN ('high', 'critical')", tid)
+    near_misses = await db.fetchval(
+        "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND incident_type='near_miss'", tid)
+    closed = await db.fetchval(
+        "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND status='closed'", tid)
+
+    trir = round((total_recordable / max(hours_worked, 1)) * 200000, 2) if hours_worked > 0 else 0
+    dart_rate = round((dart_cases / max(hours_worked, 1)) * 200000, 2) if hours_worked > 0 else 0
+    nm_rate = round((near_misses / max(total_incidents, 1)) * 100, 1)
+
+    # Per-site breakdown
+    site_metrics = []
+    for site in sites:
+        sid = site["id"]
+        s_inc = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND site_id=$2", tid, sid)
+        s_rec = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND site_id=$2 AND incident_type IN ('injury','illness')", tid, sid)
+        s_dart = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND site_id=$2 AND incident_type='injury' AND severity IN ('high','critical')", tid, sid)
+        s_nm = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND site_id=$2 AND incident_type='near_miss'", tid, sid)
+        s_closed = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND site_id=$2 AND status='closed'", tid, sid)
+        s_hours = (site["employee_count"] or 0) * 2000 * 0.5
+
+        site_metrics.append({
+            "name": site["name"],
+            "code": site["code"],
+            "employees": site["employee_count"] or 0,
+            "total_incidents": s_inc,
+            "trir": round((s_rec / max(s_hours, 1)) * 200000, 2) if s_hours > 0 else 0,
+            "dart": round((s_dart / max(s_hours, 1)) * 200000, 2) if s_hours > 0 else 0,
+            "near_miss_pct": round((s_nm / max(s_inc, 1)) * 100, 1),
+            "investigation_closure_pct": round((s_closed / max(s_inc, 1)) * 100, 1),
+        })
+
+    return {
+        "global": {
+            "total_employees": total_employees,
+            "total_sites": len(sites),
+            "hours_worked_ytd": int(hours_worked),
+            "trir": trir,
+            "dart": dart_rate,
+            "near_miss_reporting_pct": nm_rate,
+            "investigation_closure_pct": round((closed / max(total_incidents, 1)) * 100, 1),
+            "total_incidents": total_incidents,
+        },
+        "sites": site_metrics,
+        "benchmarks": {
+            "trir": {"industry_avg": 2.1, "best_in_class": 0.8, "label": "BLS Life Sciences Average"},
+            "dart": {"industry_avg": 1.2, "best_in_class": 0.4, "label": "BLS Life Sciences Average"},
+            "near_miss_target": 50,
+        }
+    }
+
+
 @router.get("/recent-activity")
 async def recent_activity(db=Depends(get_db), current_user: dict = Depends(get_current_user)):
     # Get last 10 events (incidents + CAPAs) ordered by created_at

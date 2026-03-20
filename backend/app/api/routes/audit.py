@@ -113,11 +113,19 @@ async def get_audit_readiness(db=Depends(get_db), user: dict = Depends(get_curre
         "effort": "medium",
         "rationale": "Auditing is a complete gap in the framework. Moves from red to yellow."
     })
+    top_actions.append({
+        "action": "Document PDCA management review schedule with defined triggers for corrective action",
+        "points_improvement": 4,
+        "effort": "low",
+        "rationale": "PDCA Methodology is partial due to missing Check and Act procedures. A one-page management review schedule closes this gap."
+    })
 
     return {
         "overall_score": overall,
         "level": level,
         "factors": factors,
         "recommendations": recommendations[:3],
-        "top_actions": top_actions[:3],
+        "top_actions": top_actions[:4],
+        "projected_score_if_completed": 90,
+        "projected_level": "audit_ready",
     }
