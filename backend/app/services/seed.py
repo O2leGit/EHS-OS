@@ -10,9 +10,15 @@ async def seed():
     await init_db()
     pool = await get_pool()
     async with pool.acquire() as db:
-        # Migrate from helix-bioworks to bio-techne if needed
+        # Clean up legacy helix-bioworks tenant if bio-techne already exists
         old_tenant = await db.fetchrow("SELECT id FROM tenants WHERE slug = 'helix-bioworks'")
-        if old_tenant:
+        new_tenant = await db.fetchrow("SELECT id FROM tenants WHERE slug = 'bio-techne'")
+        if old_tenant and new_tenant:
+            # Both exist: delete the old one (bio-techne is the real one)
+            print("Cleaning up legacy helix-bioworks tenant...")
+            await db.execute("DELETE FROM tenants WHERE slug = 'helix-bioworks'")
+        elif old_tenant and not new_tenant:
+            # Only old exists: rename it
             print("Migrating tenant from helix-bioworks to bio-techne...")
             await db.execute("UPDATE tenants SET name='Bio-Techne', slug='bio-techne' WHERE slug='helix-bioworks'")
             await db.execute("UPDATE users SET email='admin@bio-techne.com' WHERE email='admin@helixbioworks.com'")
