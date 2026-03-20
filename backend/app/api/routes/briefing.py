@@ -144,6 +144,41 @@ Return JSON only:
         except Exception:
             pass  # Fall back to defaults
 
+    # Rule-based fallback if AI analysis wasn't available
+    if not patterns:
+        # Detect location clusters
+        for loc, count in location_counts.items():
+            if count >= 3:
+                matching = [str(i["title"]) for i in incidents_90d if (i["location"] or "") == loc]
+                sev = "high" if any(i["severity"] == "high" for i in incidents_90d if (i["location"] or "") == loc) else "medium"
+                patterns.append({
+                    "severity": sev,
+                    "title": f"{loc} Incident Cluster",
+                    "description": f"{count} incidents at {loc} over the analysis period",
+                    "trend": "Recurring incidents at same location",
+                    "prediction": "Without intervention, additional incidents likely at this location",
+                    "recommended_action": f"Conduct comprehensive safety audit of {loc}",
+                    "matching_incidents": matching[:5],
+                })
+
+        # Detect type clusters
+        for itype, count in type_counts.items():
+            if count >= 4:
+                patterns.append({
+                    "severity": "medium",
+                    "title": f"Elevated {itype.replace('_', ' ').title()} Reports",
+                    "description": f"{count} {itype.replace('_', ' ')} incidents in 90 days",
+                    "trend": f"Above-average {itype.replace('_', ' ')} frequency",
+                    "prediction": f"Continued {itype.replace('_', ' ')} incidents expected without systemic intervention",
+                    "recommended_action": f"Review {itype.replace('_', ' ')} prevention program and root causes",
+                    "matching_incidents": [],
+                })
+
+        if patterns:
+            overall_risk = "elevated" if any(p["severity"] == "high" for p in patterns) else "moderate"
+            ai_summary = f"{len(patterns)} patterns detected requiring attention."
+            priorities = [p["recommended_action"] for p in patterns[:3]]
+
     return {
         "overall_risk": overall_risk,
         "summary": ai_summary,

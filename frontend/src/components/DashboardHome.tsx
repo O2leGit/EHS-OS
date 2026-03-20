@@ -205,6 +205,13 @@ export default function DashboardHome({ token, onNavigate, onOpenChat }: Dashboa
   const [showBriefingModal, setShowBriefingModal] = useState(false);
   const [auditReadiness, setAuditReadiness] = useState<AuditReadiness | null>(null);
   const [showAuditModal, setShowAuditModal] = useState(false);
+  const [alerts, setAlerts] = useState<{id: string; incident_number: string; title: string; severity: string; location: string; created_at: string}[]>([]);
+  const [dismissedAlerts, setDismissedAlerts] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("ehs_dismissed_alerts") || "[]");
+    } catch { return []; }
+  });
 
   useEffect(() => {
     Promise.all([
@@ -232,6 +239,11 @@ export default function DashboardHome({ token, onNavigate, onOpenChat }: Dashboa
     api<AuditReadiness>("/api/audit/readiness", { token })
       .then(setAuditReadiness)
       .catch(console.error);
+
+    // Fetch alerts
+    api<{id: string; incident_number: string; title: string; severity: string; location: string; created_at: string}[]>(
+      "/api/incidents/alerts", { token }
+    ).then(setAlerts).catch(console.error);
   }, [token]);
 
   if (loading) {
@@ -342,8 +354,57 @@ export default function DashboardHome({ token, onNavigate, onOpenChat }: Dashboa
   const hasCriticalRisk = briefing && (briefing.overall_risk_level === "critical" || briefing.overall_risk_level === "elevated");
   const criticalPatternCount = briefing?.patterns?.filter(p => p.severity === "critical" || p.severity === "high").length ?? 0;
 
+  const dismissAlert = (alertId: string) => {
+    const updated = [...dismissedAlerts, alertId];
+    setDismissedAlerts(updated);
+    localStorage.setItem("ehs_dismissed_alerts", JSON.stringify(updated));
+  };
+
+  const activeAlerts = alerts.filter(a => !dismissedAlerts.includes(a.id));
+
   return (
     <div>
+      {/* Alert Banner */}
+      {activeAlerts.length > 0 && (
+        <div className="bg-red-900/30 border border-red-500/40 rounded-xl p-4 mb-6 animate-slide-down">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+              <div>
+                <p className="text-red-300 font-semibold text-sm">
+                  {activeAlerts.length} high-severity incident{activeAlerts.length > 1 ? "s" : ""} require{activeAlerts.length === 1 ? "s" : ""} attention
+                </p>
+                <p className="text-red-400/70 text-xs mt-0.5">
+                  {activeAlerts[0]?.title} at {activeAlerts[0]?.location} - {
+                    (() => {
+                      const mins = Math.floor((Date.now() - new Date(activeAlerts[0]?.created_at).getTime()) / 60000);
+                      if (mins < 60) return `${mins}m ago`;
+                      const hours = Math.floor(mins / 60);
+                      if (hours < 24) return `${hours}h ago`;
+                      return `${Math.floor(hours / 24)}d ago`;
+                    })()
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onNavigate("incidents")}
+                className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                View
+              </button>
+              <button
+                onClick={() => activeAlerts.forEach(a => dismissAlert(a.id))}
+                className="text-xs text-red-400/50 hover:text-red-400 px-2 py-1.5 transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
 
       {/* Weekly Risk Briefing Banner */}

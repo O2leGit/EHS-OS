@@ -4,7 +4,7 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.routes import auth, documents, incidents, capas, dashboard, chat, reports, admin, audit, briefing
+from app.api.routes import auth, documents, incidents, capas, dashboard, chat, reports, admin, audit, briefing, sites, branding
 
 
 @asynccontextmanager
@@ -40,6 +40,8 @@ app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(audit.router, prefix="/api/audit", tags=["audit"])
 app.include_router(briefing.router, prefix="/api/briefing", tags=["briefing"])
+app.include_router(sites.router, prefix="/api/sites", tags=["sites"])
+app.include_router(branding.router, prefix="/api/tenant", tags=["tenant"])
 
 
 @app.get("/health")
@@ -105,6 +107,10 @@ async def public_analysis(response: Response):
         users = await db.fetch(
             "SELECT full_name, email, role FROM users WHERE tenant_id=$1", tid)
 
+        # Sites
+        sites_rows = await db.fetch(
+            "SELECT name, code, site_type, employee_count FROM sites WHERE tenant_id=$1 AND is_active=true ORDER BY name", tid)
+
         # Audit Readiness Score (inline calc, mirrors /api/audit/readiness)
         cov_rows = await db.fetch(
             "SELECT coverage_status, COUNT(*) as cnt FROM document_analyses WHERE tenant_id=$1 GROUP BY coverage_status", tid)
@@ -166,10 +172,10 @@ async def public_analysis(response: Response):
         from datetime import datetime, timezone
         import uuid
         return {
-            "data_version": "3.0-audit-enriched",
+            "data_version": "4.0-multisite-notifications",
             "request_id": str(uuid.uuid4()),
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "note": "v3.0: 20 incidents, 9 CAPAs, 5 documents, audit readiness score, enriched AI reasoning, 2 overdue CAPAs, 6-month incident spread, pattern detection ready",
+            "note": "v4.0: multi-site management (4 sites), incident notifications (email/SMS), 28 incidents, 9 CAPAs, 5 documents, audit readiness with top_actions, rule-based risk briefing fallback, branding support",
             "platform": "EHS Operating System (EHS-OS)",
             "description": "AI-native Environmental Health & Safety platform for life sciences companies",
             "demo_tenant": tenant["name"],
@@ -201,6 +207,8 @@ async def public_analysis(response: Response):
                 "Incident Reporting -- mobile-first with voice-to-text, anonymous toggle, QR code access",
                 "CAPA Workflow -- kanban board with drag-and-drop, filters, detail panels",
                 "Gap Analysis Reports -- aggregated coverage across all documents",
+                "Incident Notifications -- automatic email and SMS alerts to managers when incidents are reported",
+                "Multi-Site Management -- manage multiple facilities with site-level filtering and benchmarking",
                 "Multi-Tenant Admin -- tenant management, user roles, QR code generator",
             ],
             "tech_stack": {
@@ -234,4 +242,5 @@ async def public_analysis(response: Response):
             "framework_coverage": serialize(coverage),
             "documents": serialize(docs),
             "users": [dict(r) for r in users],
+            "sites": [dict(r) for r in sites_rows],
         }

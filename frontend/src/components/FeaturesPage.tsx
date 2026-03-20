@@ -188,6 +188,38 @@ const features: Feature[] = [
     color: "text-gray-400 bg-gray-500/10 border-gray-500/30",
     tag: "Admin",
   },
+  {
+    title: "Incident Notifications",
+    description: "Automatic email and SMS alerts to safety managers when incidents are reported. High-severity incidents trigger immediate notifications with one-click access to the report.",
+    details: [
+      "SMS alerts via Twilio within seconds of incident submission",
+      "HTML email notifications with incident details and severity badge",
+      "Configurable notification groups (admin, manager roles)",
+      "Severity-based formatting: red for high, yellow for medium",
+      "Dashboard alert banner for high-severity open incidents",
+      "One-click link from notification to incident in EHS-OS",
+      "Non-blocking: notifications sent asynchronously, never delays incident submission",
+    ],
+    icon: "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9",
+    color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30",
+    tag: "Alerts",
+  },
+  {
+    title: "Multi-Site Management",
+    description: "Manage multiple facilities from a single dashboard. Filter all data by site, compare incident rates across locations, and identify site-specific patterns.",
+    details: [
+      "Site selector in navigation filters all views instantly",
+      "4 demo sites: Denver Research Center, San Jose Manufacturing, Minneapolis HQ, Cambridge Lab",
+      "Each site has its own incident, CAPA, and document data",
+      "Aggregate view shows all sites combined (default)",
+      "Site-specific audit readiness and risk briefings",
+      "Incidents auto-tagged to reporting site",
+      "Ready for cross-site benchmarking and pattern detection",
+    ],
+    icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
+    color: "text-sky-400 bg-sky-500/10 border-sky-500/30",
+    tag: "Enterprise",
+  },
 ];
 
 const competitorComparison = [
@@ -228,7 +260,7 @@ export default function FeaturesPage() {
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <span className="w-2 h-2 bg-cyan-400 rounded-full" />
-              6 AI-Powered
+              7 AI-Powered
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <span className="w-2 h-2 bg-purple-400 rounded-full" />

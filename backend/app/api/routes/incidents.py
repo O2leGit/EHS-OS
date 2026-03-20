@@ -63,6 +63,21 @@ async def create_incident(inc: IncidentCreate, db=Depends(get_db), current_user:
         current_user["tenant_id"], incident_number, inc.incident_type, inc.severity,
         inc.title, inc.description, inc.location, inc.reported_by, current_user["sub"], inc.is_anonymous,
     )
+
+    # Send notifications asynchronously (don't block response)
+    try:
+        from app.services.notifications import send_incident_notifications
+        import asyncio
+        asyncio.create_task(send_incident_notifications(db, current_user["tenant_id"], {
+            "incident_number": incident_number,
+            "incident_type": inc.incident_type,
+            "severity": inc.severity,
+            "title": inc.title,
+            "location": inc.location,
+        }))
+    except Exception:
+        pass  # Don't fail incident creation if notifications fail
+
     return dict(row)
 
 
@@ -87,16 +102,53 @@ async def public_report(inc: PublicIncidentReport):
             tenant["id"], incident_number, inc.incident_type, inc.title,
             inc.description, inc.location, inc.reported_by, inc.is_anonymous,
         )
+        # Send notifications asynchronously (don't block response)
+        try:
+            from app.services.notifications import send_incident_notifications
+            import asyncio
+            asyncio.create_task(send_incident_notifications(db, tenant["id"], {
+                "incident_number": incident_number,
+                "incident_type": inc.incident_type,
+                "severity": "medium",
+                "title": inc.title,
+                "location": inc.location,
+            }))
+        except Exception:
+            pass  # Don't fail incident creation if notifications fail
+
         return {"id": str(row["id"]), "incident_number": row["incident_number"], "message": "Report submitted. Thank you."}
 
 
-@router.get("/")
-async def list_incidents(db=Depends(get_db), current_user: dict = Depends(get_current_user)):
+@router.get("/alerts")
+async def get_incident_alerts(db=Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Get high-severity open incidents from last 48 hours for dashboard banner."""
     rows = await db.fetch(
-        """SELECT id, incident_number, incident_type, severity, title, status, location, occurred_at, created_at
-           FROM incidents WHERE tenant_id = $1::uuid ORDER BY created_at DESC""",
+        """SELECT id, incident_number, title, severity, location, created_at
+           FROM incidents
+           WHERE tenant_id = $1::uuid
+           AND severity = 'high'
+           AND status = 'open'
+           AND created_at > NOW() - INTERVAL '48 hours'
+           ORDER BY created_at DESC""",
         current_user["tenant_id"],
     )
+    return [dict(r) for r in rows]
+
+
+@router.get("/")
+async def list_incidents(site_id: str = None, db=Depends(get_db), current_user: dict = Depends(get_current_user)):
+    if site_id:
+        rows = await db.fetch(
+            """SELECT id, incident_number, incident_type, severity, title, status, location, occurred_at, created_at
+               FROM incidents WHERE tenant_id = $1::uuid AND site_id = $2::uuid ORDER BY created_at DESC""",
+            current_user["tenant_id"], site_id,
+        )
+    else:
+        rows = await db.fetch(
+            """SELECT id, incident_number, incident_type, severity, title, status, location, occurred_at, created_at
+               FROM incidents WHERE tenant_id = $1::uuid ORDER BY created_at DESC""",
+            current_user["tenant_id"],
+        )
     return [dict(r) for r in rows]
 
 

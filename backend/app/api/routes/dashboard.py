@@ -6,20 +6,33 @@ router = APIRouter()
 
 
 @router.get("/summary")
-async def dashboard_summary(db=Depends(get_db), current_user: dict = Depends(get_current_user)):
+async def dashboard_summary(site_id: str = None, db=Depends(get_db), current_user: dict = Depends(get_current_user)):
     tid = current_user["tenant_id"]
 
-    incidents_mtd = await db.fetchval(
-        """SELECT COUNT(*) FROM incidents
-           WHERE tenant_id = $1::uuid AND created_at >= date_trunc('month', NOW())""",
-        tid,
-    )
-    open_capas = await db.fetchval(
-        "SELECT COUNT(*) FROM capas WHERE tenant_id = $1::uuid AND status IN ('open', 'in_progress')", tid
-    )
-    overdue_capas = await db.fetchval(
-        "SELECT COUNT(*) FROM capas WHERE tenant_id = $1::uuid AND status != 'closed' AND due_date < NOW()", tid
-    )
+    if site_id:
+        incidents_mtd = await db.fetchval(
+            """SELECT COUNT(*) FROM incidents
+               WHERE tenant_id = $1::uuid AND site_id = $2::uuid AND created_at >= date_trunc('month', NOW())""",
+            tid, site_id,
+        )
+        open_capas = await db.fetchval(
+            "SELECT COUNT(*) FROM capas WHERE tenant_id = $1::uuid AND site_id = $2::uuid AND status IN ('open', 'in_progress')", tid, site_id
+        )
+        overdue_capas = await db.fetchval(
+            "SELECT COUNT(*) FROM capas WHERE tenant_id = $1::uuid AND site_id = $2::uuid AND status != 'closed' AND due_date < NOW()", tid, site_id
+        )
+    else:
+        incidents_mtd = await db.fetchval(
+            """SELECT COUNT(*) FROM incidents
+               WHERE tenant_id = $1::uuid AND created_at >= date_trunc('month', NOW())""",
+            tid,
+        )
+        open_capas = await db.fetchval(
+            "SELECT COUNT(*) FROM capas WHERE tenant_id = $1::uuid AND status IN ('open', 'in_progress')", tid
+        )
+        overdue_capas = await db.fetchval(
+            "SELECT COUNT(*) FROM capas WHERE tenant_id = $1::uuid AND status != 'closed' AND due_date < NOW()", tid
+        )
 
     total_categories = 20  # approximate total framework categories
     covered = await db.fetchval(

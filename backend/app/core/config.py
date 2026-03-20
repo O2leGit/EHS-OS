@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     s3_bucket: str = "ehs-os-documents"
     frontend_url: str = "http://localhost:3000"
     upload_dir: str = "./uploads"
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_phone: str = ""
+    sendgrid_api_key: str = ""
+    notification_enabled: bool = False
 
     class Config:
         env_file = ".env"

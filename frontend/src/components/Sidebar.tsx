@@ -8,6 +8,9 @@ interface SidebarProps {
   onLogout: () => void;
   userName: string;
   userRole?: string;
+  sites?: {id: string; name: string; code: string}[];
+  selectedSiteId?: string | null;
+  onSiteChange?: (siteId: string | null) => void;
 }
 
 interface NavItem {
@@ -26,7 +29,7 @@ const navItems: NavItem[] = [
   { id: "admin", label: "Admin", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z", adminOnly: true },
 ];
 
-export default function Sidebar({ currentPage, onNavigate, onLogout, userName, userRole }: SidebarProps) {
+export default function Sidebar({ currentPage, onNavigate, onLogout, userName, userRole, sites, selectedSiteId, onSiteChange }: SidebarProps) {
   const [expanded, setExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -64,13 +67,31 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, userName, u
             </button>
           )}
           {!isMobile && (
-            <div className="w-8 h-8 bg-safe rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-              E
+            <div className="w-8 h-8 bg-safe rounded-lg flex items-center justify-center text-white flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
             </div>
           )}
-          {expanded && <span className="text-safe font-bold text-sm">EHS-OS</span>}
+          {expanded && <span className="text-safe font-bold text-sm">Parzy Consulting</span>}
         </div>
       </div>
+
+      {/* Site selector */}
+      {sites && sites.length > 0 && expanded && (
+        <div className="px-3 py-2 border-b border-navy-700">
+          <select
+            value={selectedSiteId || ""}
+            onChange={(e) => onSiteChange?.(e.target.value || null)}
+            className="w-full bg-navy-800 border border-navy-700 text-gray-300 text-xs rounded-lg px-2 py-1.5 focus:border-safe focus:outline-none"
+          >
+            <option value="">All Sites</option>
+            {sites.map((site) => (
+              <option key={site.id} value={site.id}>{site.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <nav className="flex-1 py-2">
         {navItems.filter((item) => !item.adminOnly || userRole === "admin").map((item) => (

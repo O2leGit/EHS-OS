@@ -577,6 +577,100 @@ async def reseed_demo_data(db):
                 assigned_to, today + timedelta(days=days_due), capa_ts,
             )
 
+    # =========================================================================
+    # Block 1A: Close old incidents (older than 90 days)
+    # =========================================================================
+    # Close specific old incidents that should not still be open
+    for inc_num in ["INC-0001", "INC-0008", "INC-0009", "INC-0010", "INC-0011"]:
+        await db.execute(
+            "UPDATE incidents SET status = 'closed' WHERE tenant_id = $1 AND incident_number = $2 AND status = 'open'",
+            tid, inc_num,
+        )
+
+    # INC-0002 and INC-0003 stay open intentionally (overdue CAPAs)
+
+    # =========================================================================
+    # Block 1B: Close some CAPAs
+    # =========================================================================
+    await db.execute(
+        "UPDATE capas SET status = 'closed', closed_at = NOW() WHERE tenant_id = $1 AND capa_number = 'CAPA-0001'",
+        tid,
+    )
+    await db.execute(
+        "UPDATE capas SET status = 'closed', closed_at = NOW() WHERE tenant_id = $1 AND capa_number = 'CAPA-0009'",
+        tid,
+    )
+
+    # =========================================================================
+    # Block 5: Multi-site seed data
+    # =========================================================================
+    sites_data = [
+        ("Denver Research Center", "DEN", "lab", 85),
+        ("San Jose Manufacturing", "SJC", "manufacturing", 120),
+        ("Minneapolis HQ", "MSP", "office", 200),
+        ("Cambridge Lab", "CAM", "lab", 45),
+    ]
+
+    site_ids = {}
+    for name, code, stype, emp_count in sites_data:
+        existing_site = await db.fetchrow(
+            "SELECT id FROM sites WHERE tenant_id = $1 AND code = $2", tid, code,
+        )
+        if existing_site:
+            site_ids[code] = existing_site["id"]
+        else:
+            row = await db.fetchrow(
+                """INSERT INTO sites (tenant_id, name, code, site_type, employee_count)
+                   VALUES ($1, $2, $3, $4, $5) RETURNING id""",
+                tid, name, code, stype, emp_count,
+            )
+            site_ids[code] = row["id"]
+
+    # Tag all existing incidents/CAPAs/documents to Denver
+    den_id = site_ids["DEN"]
+    await db.execute(
+        "UPDATE incidents SET site_id = $1 WHERE tenant_id = $2 AND site_id IS NULL", den_id, tid,
+    )
+    await db.execute(
+        "UPDATE capas SET site_id = $1 WHERE tenant_id = $2 AND site_id IS NULL", den_id, tid,
+    )
+    await db.execute(
+        "UPDATE documents SET site_id = $1 WHERE tenant_id = $2 AND site_id IS NULL", den_id, tid,
+    )
+
+    # Add incidents for other sites
+    multi_site_incidents = [
+        ("INC-0021", "injury", "medium", "Forklift struck storage rack", "Forklift operator clipped corner of storage rack during turn in warehouse area. Minor rack damage, no injuries.", "San Jose - Warehouse", "Anonymous", "open", 8, "SJC"),
+        ("INC-0022", "near_miss", "high", "Pallet fell during unloading", "Pallet shifted and fell from second tier during manual unloading. No personnel in drop zone.", "San Jose - Loading Dock", "James Parker", "open", 5, "SJC"),
+        ("INC-0023", "hazard", "medium", "Emergency exit partially blocked by equipment", "Quarterly inspection found packaging equipment staged within 3 feet of emergency exit door.", "San Jose - Packaging Area", "Maria Rodriguez", "open", 2, "SJC"),
+        ("INC-0024", "environmental", "low", "Oil stain observed on warehouse floor near drain", "Small oil stain approximately 12 inches diameter observed near floor drain in warehouse.", "San Jose - Warehouse", "Anonymous", "closed", 12, "SJC"),
+        ("INC-0025", "near_miss", "low", "Wet floor in breakroom with no sign", "Water from ice machine overflow created wet area in breakroom. No wet floor sign posted.", "Minneapolis - Breakroom", "Sarah Chen", "closed", 20, "MSP"),
+        ("INC-0026", "observation", "low", "First aid kit expired supplies", "Monthly first aid kit check found 4 items past expiration date in 2nd floor kit.", "Minneapolis - 2nd Floor", "Maria Rodriguez", "closed", 15, "MSP"),
+        ("INC-0027", "hazard", "high", "Biosafety cabinet certification expired 2 months", "BSC-2 in Lab A found with certification expired since January 2026. Cabinet has been in active use.", "Cambridge - Lab A", "James Parker", "open", 6, "CAM"),
+        ("INC-0028", "near_miss", "medium", "Cryogenic liquid splash during transfer", "Liquid nitrogen splashed during dewar transfer when receiving vessel was not pre-cooled.", "Cambridge - Lab B", "Anonymous", "open", 3, "CAM"),
+    ]
+
+    for inc_num, itype, sev, title, desc, loc, reporter, status, days_ago, site_code in multi_site_incidents:
+        existing_inc = await db.fetchrow(
+            "SELECT id FROM incidents WHERE tenant_id = $1 AND incident_number = $2", tid, inc_num,
+        )
+        if not existing_inc:
+            ts = now - timedelta(days=days_ago)
+            await db.execute(
+                """INSERT INTO incidents (tenant_id, site_id, incident_number, incident_type, severity, title,
+                                          description, location, reported_by, status, created_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)""",
+                tid, site_ids[site_code], inc_num, itype, sev, title, desc, loc, reporter, status, ts,
+            )
+
+    # =========================================================================
+    # Block 6: Parzy branding
+    # =========================================================================
+    await db.execute(
+        "UPDATE tenants SET brand_name = 'Parzy Consulting' WHERE id = $1 AND (brand_name IS NULL OR brand_name = '')",
+        tid,
+    )
+
     print("Reseed: Demo data enriched successfully!")
 
 

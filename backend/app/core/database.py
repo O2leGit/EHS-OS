@@ -128,6 +128,56 @@ CREATE TABLE IF NOT EXISTS prompt_templates (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS sites (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    code VARCHAR(20) NOT NULL,
+    site_type VARCHAR(50),
+    employee_count INTEGER,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, code)
+);
+
+-- Add site_id columns (nullable for backward compat)
+DO $$ BEGIN
+    ALTER TABLE incidents ADD COLUMN site_id UUID REFERENCES sites(id);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+    ALTER TABLE capas ADD COLUMN site_id UUID REFERENCES sites(id);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+    ALTER TABLE documents ADD COLUMN site_id UUID REFERENCES sites(id);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Add phone_number to users (for SMS notifications)
+DO $$ BEGIN
+    ALTER TABLE users ADD COLUMN phone_number VARCHAR(20);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Add branding columns to tenants
+DO $$ BEGIN
+    ALTER TABLE tenants ADD COLUMN brand_name VARCHAR(100);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+    ALTER TABLE tenants ADD COLUMN logo_url TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+    ALTER TABLE tenants ADD COLUMN brand_color_primary VARCHAR(7) DEFAULT '#1B2A4A';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+DO $$ BEGIN
+    ALTER TABLE tenants ADD COLUMN brand_color_accent VARCHAR(7) DEFAULT '#2ECC71';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_documents_tenant ON documents(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_analyses_document ON document_analyses(document_id);
 CREATE INDEX IF NOT EXISTS idx_analyses_tenant ON document_analyses(tenant_id);
@@ -135,4 +185,6 @@ CREATE INDEX IF NOT EXISTS idx_incidents_tenant ON incidents(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_capas_tenant ON capas(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_capas_incident ON capas(incident_id);
 CREATE INDEX IF NOT EXISTS idx_chat_user ON chat_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_sites_tenant ON sites(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_incidents_site ON incidents(site_id);
 """

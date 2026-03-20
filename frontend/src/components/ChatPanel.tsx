@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { api } from "@/lib/api";
 
 interface ChatPanelProps {
@@ -265,6 +266,47 @@ export default function ChatPanel({ token, currentPage, onClose, onNavigate, ini
   const [loading, setLoading] = useState(false);
   const [prompts, setPrompts] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [voiceListening, setVoiceListening] = useState(false);
+  const voiceRecognitionRef = useRef<any>(null);
+
+  const toggleVoice = () => {
+    const SpeechRecognitionAPI =
+      typeof window !== "undefined"
+        ? (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition
+        : null;
+
+    if (!SpeechRecognitionAPI) return;
+
+    if (voiceListening && voiceRecognitionRef.current) {
+      voiceRecognitionRef.current.stop();
+      setVoiceListening(false);
+      return;
+    }
+
+    const recognition = new (SpeechRecognitionAPI as new () => any)();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          transcript += event.results[i][0].transcript;
+        }
+      }
+      if (transcript) {
+        setInput((prev) => prev ? prev + " " + transcript : transcript);
+      }
+    };
+
+    recognition.onerror = () => setVoiceListening(false);
+    recognition.onend = () => setVoiceListening(false);
+
+    recognition.start();
+    voiceRecognitionRef.current = recognition;
+    setVoiceListening(true);
+  };
 
   const fetchHistory = useCallback(() => {
     api<Message[]>("/api/chat/history", { token }).then(setMessages).catch(console.error);
@@ -356,8 +398,14 @@ export default function ChatPanel({ token, currentPage, onClose, onNavigate, ini
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-navy-700">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-safe rounded-full" />
-          <h2 className="font-semibold">EHS Expert</h2>
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-safe" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <h2 className="font-semibold">EHS Advisor</h2>
+          <span className="flex items-center gap-1 text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-full px-2 py-0.5">
+            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+            AI-powered
+          </span>
         </div>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-200">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -369,17 +417,24 @@ export default function ChatPanel({ token, currentPage, onClose, onNavigate, ini
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
-          <div className="space-y-2">
-            <p className="text-sm text-gray-400 mb-3">How can I help with your EHS program?</p>
-            {prompts.map((p) => (
-              <button
-                key={p}
-                onClick={() => sendMessage(p)}
-                className="block w-full text-left text-sm bg-navy-800 hover:bg-navy-700 border border-navy-700 rounded-lg px-3 py-2 text-gray-300 transition-colors"
-              >
-                {p}
-              </button>
-            ))}
+          <div className="space-y-3">
+            <div className="bg-navy-800 rounded-lg p-4 border border-navy-700">
+              <p className="text-sm text-gray-300 leading-relaxed">
+                I&apos;m your EHS advisor, configured with Parzy Consulting&apos;s expertise and your facility&apos;s documents. I know your framework coverage, your incidents, your open corrective actions, and relevant OSHA and EPA regulations.
+              </p>
+              <p className="text-sm text-gray-300 mt-2 font-medium">Ask me anything about your EHS program.</p>
+            </div>
+            <div className="space-y-2">
+              {["What are my biggest risks right now?", "Which CAPAs should I prioritize?", "Help me write an SOP", "Explain a regulation"].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => sendMessage(p)}
+                  className="block w-full text-left text-sm bg-navy-800 hover:bg-navy-700 border border-navy-700 rounded-lg px-3 py-2 text-gray-300 transition-colors"
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -423,6 +478,21 @@ export default function ChatPanel({ token, currentPage, onClose, onNavigate, ini
             className="input-field flex-1 text-sm"
             disabled={loading}
           />
+          <button
+            type="button"
+            onClick={toggleVoice}
+            title={voiceListening ? "Stop recording" : "Voice input"}
+            className={`px-2 rounded-lg transition-all ${
+              voiceListening
+                ? "bg-red-500 text-white animate-pulse"
+                : "bg-navy-800 text-gray-400 hover:text-white hover:bg-navy-700"
+            }`}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+            </svg>
+          </button>
           <button type="submit" className="btn-primary px-3" disabled={loading || !input.trim()}>
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

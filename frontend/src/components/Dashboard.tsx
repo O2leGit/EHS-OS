@@ -25,6 +25,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
   const [user, setUser] = useState<{ full_name: string; role: string } | null>(null);
   const [toasts, setToasts] = useState<{id: number; message: string; type: 'success' | 'error'}[]>([]);
+  const [sites, setSites] = useState<{id: string; name: string; code: string}[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     const id = Date.now();
@@ -39,6 +41,9 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         clearAuth();
         onLogout();
       });
+    api<{id: string; name: string; code: string}[]>("/api/sites/", { token })
+      .then(setSites)
+      .catch(console.error);
   }, [token, onLogout]);
 
   const handleLogout = () => {
@@ -78,6 +83,9 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         onLogout={handleLogout}
         userName={user?.full_name || ""}
         userRole={user?.role || ""}
+        sites={sites}
+        selectedSiteId={selectedSiteId}
+        onSiteChange={setSelectedSiteId}
       />
       <main className={`flex-1 overflow-y-auto transition-all ${chatOpen ? "mr-[380px]" : ""}`}>
         <div className="p-6 max-w-7xl mx-auto">

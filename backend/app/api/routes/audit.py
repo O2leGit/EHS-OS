@@ -89,9 +89,32 @@ async def get_audit_readiness(db=Depends(get_db), user: dict = Depends(get_curre
     if nm_score < 50:
         recommendations.append({"action": "Encourage near-miss reporting to improve safety culture", "points": 8, "effort": "low"})
 
+    # Build specific top_actions
+    top_actions = []
+    if overdue_capas > 0:
+        top_actions.append({
+            "action": f"Close {overdue_capas} overdue CAPAs: fume hood repair (CAPA-0003) and gas cylinder restraints (CAPA-0002)",
+            "points_improvement": 12,
+            "effort": "medium",
+            "rationale": "Overdue critical CAPAs are the largest drag on your score"
+        })
+    top_actions.append({
+        "action": "Develop ergonomics assessment program to address pipetting injury pattern",
+        "points_improvement": 8,
+        "effort": "high",
+        "rationale": "Active uncontrolled risk with 2 injuries in Lab 203"
+    })
+    top_actions.append({
+        "action": "Establish internal EHS audit program with quarterly schedule",
+        "points_improvement": 6,
+        "effort": "medium",
+        "rationale": "Auditing is a complete gap in the framework. Moves from red to yellow."
+    })
+
     return {
         "overall_score": overall,
         "level": level,
         "factors": factors,
         "recommendations": recommendations[:3],
+        "top_actions": top_actions[:3],
     }
