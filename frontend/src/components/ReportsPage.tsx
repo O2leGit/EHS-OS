@@ -114,6 +114,26 @@ export default function ReportsPage({ token }: ReportsPageProps) {
     }
   };
 
+  const downloadReport = async (reportId: string) => {
+    try {
+      const response = await fetch(`/api/reports/${reportId}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = response.headers.get("content-disposition")?.split("filename=")[1]?.replace(/"/g, "") || "ehs_report.docx";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (err) {
+      console.error("Download error:", err);
+    }
+  };
+
   if (selectedReport) {
     const c = selectedReport.content;
     return (
@@ -132,9 +152,20 @@ export default function ReportsPage({ token }: ReportsPageProps) {
               Generated {new Date(selectedReport.created_at).toLocaleString()} by {selectedReport.created_by}
             </p>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${TYPE_COLORS[selectedReport.report_type] || ""}`}>
-            {TYPE_LABELS[selectedReport.report_type] || selectedReport.report_type}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => downloadReport(selectedReport.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-navy-600 bg-navy-700 text-gray-300 hover:bg-navy-600 hover:text-white transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download Word
+            </button>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium border ${TYPE_COLORS[selectedReport.report_type] || ""}`}>
+              {TYPE_LABELS[selectedReport.report_type] || selectedReport.report_type}
+            </span>
+          </div>
         </div>
 
         {/* Executive Summary */}
@@ -311,9 +342,20 @@ export default function ReportsPage({ token }: ReportsPageProps) {
                     </div>
                   </div>
                 </div>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); downloadReport(report.id); }}
+                    className="p-1.5 rounded-md text-gray-500 hover:text-white hover:bg-navy-600 transition-colors"
+                    title="Download Word Document"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </button>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
               </button>
             ))}
           </div>

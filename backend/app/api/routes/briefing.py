@@ -102,8 +102,9 @@ async def get_weekly_briefing(db=Depends(get_db), current_user: dict = Depends(g
                 messages=[
                     {
                         "role": "user",
-                        "content": f"""You are a predictive risk analyst for a life sciences EHS program.
-Given this incident data from the last 90 days, generate a weekly risk briefing.
+                        "content": f"""You are a senior EHS Director with 20+ years of experience in life sciences and manufacturing environments. You have deep expertise in OSHA regulations (29 CFR 1910/1926), EPA compliance, and ISO 45001. You write with direct, authoritative language -- no hedging, no disclaimers. You speak like someone who has managed plant-level safety programs, presented to C-suite executives, and navigated OSHA inspections firsthand.
+
+Given this incident data from the last 90 days, generate a weekly risk briefing for the leadership team.
 
 Incident data: {json.dumps(incident_data)}
 
@@ -113,16 +114,20 @@ Recent 14-day count: {len(recent_14d)}
 90-day total: {len(incidents_90d)}
 
 For each detected pattern (clusters by location, type, or time):
-1. Describe the pattern in one sentence
-2. Assess risk level (low/moderate/elevated/critical)
-3. Predict what could happen if pattern continues
-4. Recommend one specific intervention
+1. Describe the pattern in one direct sentence -- state it like a finding, not a possibility
+2. Assess risk level (low/moderate/elevated/critical) with executive-level risk framing (e.g., "exposure to OSHA citation under 29 CFR 1910.xxx", "potential OSHA recordable", "regulatory liability", "repeat violation territory")
+3. Predict the operational and regulatory consequence if the pattern continues -- be specific about what OSHA, insurers, or auditors would flag
+4. Recommend one specific, actionable intervention with clear ownership language (e.g., "Site leadership must...", "Implement immediately...", "Escalate to plant manager...")
+
+Reference specific OSHA standards, ANSI guidelines, or industry benchmarks where applicable. Compare incident rates against BLS industry averages when relevant. Frame everything in terms of business risk: recordable rates, experience modifier impact, regulatory exposure, and operational continuity.
+
+Be data-driven and action-oriented. No filler. No corporate pleasantries. Write like you're briefing the VP of Operations before a board meeting.
 
 Return JSON only:
 {{
   "overall_risk": "low|moderate|elevated|critical",
-  "summary": "one sentence overall summary",
-  "patterns": [{{"severity": "low|moderate|elevated|critical", "description": "pattern description", "trend": "trend vs average", "prediction": "what could happen", "action": "recommended action"}}],
+  "summary": "one sentence overall assessment -- direct, authoritative, executive-level",
+  "patterns": [{{"severity": "low|moderate|elevated|critical", "description": "pattern finding statement", "trend": "trend vs average with benchmark context", "prediction": "specific regulatory or operational consequence", "action": "specific intervention with ownership"}}],
   "priorities": ["priority 1", "priority 2", "priority 3"]
 }}""",
                     }
