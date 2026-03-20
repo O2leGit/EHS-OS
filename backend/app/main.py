@@ -11,6 +11,12 @@ from app.api.routes import auth, documents, incidents, capas, dashboard, chat
 async def lifespan(app: FastAPI):
     os.makedirs(settings.upload_dir, exist_ok=True)
     await init_db()
+    # Auto-seed demo data on startup
+    from app.services.seed import seed
+    try:
+        await seed()
+    except Exception as e:
+        print(f"Seed warning: {e}")
     yield
 
 
@@ -18,7 +24,7 @@ app = FastAPI(title="EHS Operating System", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url, "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
