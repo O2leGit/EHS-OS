@@ -428,10 +428,11 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
           <img
             src="https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg"
             alt="Bio-Techne"
-            className="h-8 object-contain invert brightness-200"
+            className="h-8 object-contain"
+            style={{ filter: "invert(1) brightness(2)" }}
           />
           <div className="h-6 w-px bg-navy-700" />
-          <h1 className="text-2xl font-bold">EHS Dashboard</h1>
+          <h1 className="text-2xl font-bold">EHS Management System</h1>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-gray-500">Powered by</span>
