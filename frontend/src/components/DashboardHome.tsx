@@ -434,13 +434,22 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
           <div className="h-6 w-px bg-navy-700" />
           <h1 className="text-2xl font-bold">EHS Management System</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-gray-500">Powered by</span>
-          <img
-            src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_120,h_34,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
-            alt="Parzy Consulting"
-            className="h-4 object-contain opacity-60"
-          />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-gray-400">Managed by</span>
+            <img
+              src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_200,h_57,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
+              alt="Parzy Consulting"
+              className="h-6 object-contain opacity-80"
+            />
+          </div>
+          <div className="h-4 w-px bg-navy-700" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-gray-400">Powered by</span>
+            <span className="text-xs font-semibold text-gray-300">ScaleOS</span>
+            <span className="text-[10px] text-gray-500">&</span>
+            <span className="text-xs font-semibold text-gray-300">IkigaiOS</span>
+          </div>
         </div>
       </div>
 

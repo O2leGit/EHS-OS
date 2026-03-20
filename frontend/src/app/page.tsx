@@ -89,13 +89,21 @@ export default function Home() {
             className="h-12 mx-auto mb-3 object-contain invert brightness-200"
           />
           <h1 className="text-xl font-bold text-white">EHS Management System</h1>
-          <div className="flex items-center justify-center gap-2 mt-2">
-            <span className="text-gray-500 text-xs">Powered by</span>
-            <img
-              src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_200,h_57,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
-              alt="Parzy Consulting"
-              className="h-5 object-contain opacity-70"
-            />
+          <div className="flex flex-col items-center gap-1.5 mt-3">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 text-xs">Managed by</span>
+              <img
+                src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_200,h_57,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
+                alt="Parzy Consulting"
+                className="h-6 object-contain opacity-80"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-gray-500 text-[10px]">Powered by</span>
+              <span className="text-xs font-semibold text-gray-400">ScaleOS</span>
+              <span className="text-[10px] text-gray-600">&</span>
+              <span className="text-xs font-semibold text-gray-400">IkigaiOS</span>
+            </div>
           </div>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
