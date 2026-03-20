@@ -10,19 +10,10 @@ async def seed():
     await init_db()
     pool = await get_pool()
     async with pool.acquire() as db:
-        # Delete existing demo data and reseed
         existing = await db.fetchrow("SELECT id FROM tenants WHERE slug = 'helix-bioworks'")
         if existing:
-            tid_old = existing["id"]
-            await db.execute("DELETE FROM chat_messages WHERE tenant_id = $1", tid_old)
-            await db.execute("DELETE FROM document_analyses WHERE tenant_id = $1", tid_old)
-            await db.execute("DELETE FROM capas WHERE tenant_id = $1", tid_old)
-            await db.execute("DELETE FROM incidents WHERE tenant_id = $1", tid_old)
-            await db.execute("DELETE FROM documents WHERE tenant_id = $1", tid_old)
-            await db.execute("DELETE FROM prompt_templates WHERE tenant_id = $1", tid_old)
-            await db.execute("DELETE FROM users WHERE tenant_id = $1", tid_old)
-            await db.execute("DELETE FROM tenants WHERE id = $1", tid_old)
-            print("Cleared old demo data, reseeding...")
+            print("Demo data already exists, skipping seed.")
+            return
 
         # Create tenant
         tenant = await db.fetchrow(
