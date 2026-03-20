@@ -9,6 +9,7 @@ import DocumentsPage from "./DocumentsPage";
 import IncidentsPage from "./IncidentsPage";
 import CapaPage from "./CapaPage";
 import AdminPage from "./AdminPage";
+import FeaturesPage from "./FeaturesPage";
 import ChatPanel from "./ChatPanel";
 
 interface DashboardProps {
@@ -16,7 +17,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type Page = "dashboard" | "documents" | "incidents" | "capas" | "admin";
+type Page = "dashboard" | "documents" | "incidents" | "capas" | "features" | "admin";
 
 export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
@@ -47,6 +48,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         return <IncidentsPage token={token} />;
       case "capas":
         return <CapaPage token={token} />;
+      case "features":
+        return <FeaturesPage />;
       case "admin":
         return <AdminPage token={token} userRole={user?.role || ""} />;
       default:
