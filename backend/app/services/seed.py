@@ -14,9 +14,16 @@ async def seed():
         old_tenant = await db.fetchrow("SELECT id FROM tenants WHERE slug = 'helix-bioworks'")
         new_tenant = await db.fetchrow("SELECT id FROM tenants WHERE slug = 'bio-techne'")
         if old_tenant and new_tenant:
-            # Both exist: delete the old one (bio-techne is the real one)
-            print("Cleaning up legacy helix-bioworks tenant...")
-            await db.execute("DELETE FROM tenants WHERE slug = 'helix-bioworks'")
+            # Both exist: clean up FK references then delete the old one
+            old_id = old_tenant["id"]
+            print(f"Cleaning up legacy helix-bioworks tenant {old_id}...")
+            # Nullify or delete all FK references to old tenant
+            for tbl in ["incidents", "capas", "documents", "document_analyses", "users", "chat_messages", "sites", "reports", "prompt_templates"]:
+                try:
+                    await db.execute(f"DELETE FROM {tbl} WHERE tenant_id = $1", old_id)
+                except Exception:
+                    pass  # Table may not exist
+            await db.execute("DELETE FROM tenants WHERE id = $1", old_id)
         elif old_tenant and not new_tenant:
             # Only old exists: rename it
             print("Migrating tenant from helix-bioworks to bio-techne...")
