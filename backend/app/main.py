@@ -1,6 +1,6 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db
@@ -48,10 +48,12 @@ async def health():
 
 
 @app.get("/api/public/analysis")
-async def public_analysis():
+async def public_analysis(response: Response):
     """Public endpoint for Claude Chat / external AI analysis.
     Returns a comprehensive overview of the Helix BioWorks demo tenant
     without requiring authentication."""
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
     from app.core.database import get_pool
     pool = await get_pool()
     async with pool.acquire() as db:
@@ -120,7 +122,11 @@ async def public_analysis():
         total_count = len(coverage)
         coverage_pct = round((covered_count / total_count) * 100) if total_count else 0
 
+        from datetime import datetime, timezone
         return {
+            "data_version": "2.0-polished",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "note": "This data reflects DEMO_POLISH.md fixes: 20 incidents, 9 CAPAs across 3 assignees, 5 analyzed documents, enriched AI reasoning, 2 overdue CAPAs, 6-month incident spread, pattern detection ready",
             "platform": "EHS Operating System (EHS-OS)",
             "description": "AI-native Environmental Health & Safety platform for life sciences companies",
             "demo_tenant": tenant["name"],
