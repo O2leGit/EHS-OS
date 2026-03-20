@@ -429,7 +429,7 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
             src="https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg"
             alt="Bio-Techne"
             className="h-8 object-contain"
-            style={{ filter: "invert(1) brightness(2)" }}
+            style={{ filter: "brightness(0) invert(1)" }}
           />
           <div className="h-6 w-px bg-navy-700" />
           <h1 className="text-2xl font-bold">EHS Management System</h1>

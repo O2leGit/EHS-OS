@@ -86,7 +86,8 @@ export default function Home() {
           <img
             src="https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg"
             alt="Bio-Techne"
-            className="h-12 mx-auto mb-3 object-contain invert brightness-200"
+            className="h-12 mx-auto mb-3 object-contain"
+            style={{ filter: "brightness(0) invert(1)" }}
           />
           <h1 className="text-xl font-bold text-white">EHS Management System</h1>
           <div className="flex flex-col items-center gap-1.5 mt-3">

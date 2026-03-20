@@ -79,9 +79,9 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, userName, u
               <img
                 src="https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg"
                 alt="Bio-Techne"
-                className="h-6 object-contain invert brightness-200"
+                className="h-6 object-contain" style={{ filter: "brightness(0) invert(1)" }}
               />
-              <span className="text-[9px] text-gray-500 mt-0.5">Powered by Parzy Consulting</span>
+              <span className="text-[9px] text-gray-500 mt-0.5">EHS Management System</span>
             </div>
           )}
         </div>
