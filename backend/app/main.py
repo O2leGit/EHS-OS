@@ -16,7 +16,9 @@ async def lifespan(app: FastAPI):
     try:
         await seed()
     except Exception as e:
-        print(f"Seed warning: {e}")
+        import traceback
+        print(f"Seed ERROR: {e}")
+        traceback.print_exc()
     yield
 
 

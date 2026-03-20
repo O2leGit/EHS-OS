@@ -614,6 +614,7 @@ async def reseed_demo_data(db):
     # =========================================================================
     # Block 5: Multi-site seed data
     # =========================================================================
+    print(f"Reseed Block 5: Setting up 7 Bio-Techne sites...")
     sites_data = [
         ("Minneapolis HQ", "MSP", "headquarters", 700),
         ("St. Paul GMP Manufacturing", "STP", "manufacturing", 150),
@@ -703,7 +704,9 @@ async def reseed_demo_data(db):
         tid,
     )
 
-    print("Reseed: Demo data enriched successfully!")
+    # Verify sites
+    site_check = await db.fetch("SELECT code, name, employee_count FROM sites WHERE tenant_id = $1 ORDER BY code", tid)
+    print(f"Reseed complete: {len(site_check)} sites -> {[(s['code'], s['name'], s['employee_count']) for s in site_check]}")
 
 
 if __name__ == "__main__":
