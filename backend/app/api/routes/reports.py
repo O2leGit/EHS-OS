@@ -267,18 +267,23 @@ async def generate_report(req: ReportRequest, db=Depends(get_db), user: dict = D
     data = await gather_report_data(db, tid)
 
     # Generate via Claude
-    from app.services.ai import get_client
-    client = get_client()
+    import traceback
+    try:
+        from app.services.ai import get_client
+        client = get_client()
 
-    prompt = build_report_prompt(req.report_type, data)
+        prompt = build_report_prompt(req.report_type, data)
 
-    response = await client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=4000,
-        messages=[{"role": "user", "content": prompt}],
-    )
+        response = await client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}],
+        )
 
-    content_text = response.content[0].text
+        content_text = response.content[0].text
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(500, f"AI generation failed: {str(e)}")
     try:
         if "```json" in content_text:
             content_text = content_text.split("```json")[1].split("```")[0]
