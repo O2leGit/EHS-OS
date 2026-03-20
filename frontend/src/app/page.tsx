@@ -9,7 +9,7 @@ export default function Home() {
   const [token, setToken] = useState<string | null>(
     typeof window !== "undefined" ? getToken() : null
   );
-  const [email, setEmail] = useState("admin@helixbioworks.com");
+  const [email, setEmail] = useState("admin@bio-techne.com");
   const [password, setPassword] = useState("demo123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ export default function Home() {
     setAutoLogging(true);
     api<{ token: string; user_id: string }>("/api/auth/login", {
       method: "POST",
-      body: { email: "admin@helixbioworks.com", password: "demo123" },
+      body: { email: "admin@bio-techne.com", password: "demo123" },
     })
       .then((res) => {
         setAuth(res.token, res.user_id);
@@ -55,7 +55,7 @@ export default function Home() {
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
-        <h1 className="text-xl font-semibold text-white mb-1">Loading Parzy Consulting EHS-OS...</h1>
+        <h1 className="text-xl font-semibold text-white mb-1">Loading Bio-Techne EHS Management...</h1>
         <p className="text-gray-500 text-sm">Signing in automatically</p>
       </div>
     );
@@ -84,11 +84,12 @@ export default function Home() {
       <div className="card w-full max-w-md">
         <div className="text-center mb-8">
           <img
-            src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_400,h_114,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
-            alt="Parzy Consulting"
-            className="h-16 mx-auto mb-4 object-contain"
+            src="https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg"
+            alt="Bio-Techne"
+            className="h-12 mx-auto mb-4 object-contain invert brightness-200"
           />
-          <p className="text-gray-400 mt-1 text-sm">EHS Operating System</p>
+          <h1 className="text-xl font-bold text-white">EHS Management System</h1>
+          <p className="text-gray-400 mt-1 text-sm">Powered by Parzy Consulting</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           {error && (
@@ -120,7 +121,7 @@ export default function Home() {
             {loading ? "Signing in..." : "Sign In"}
           </button>
           <p className="text-xs text-gray-500 text-center mt-4">
-            Demo: admin@helixbioworks.com / demo123
+            Demo: admin@bio-techne.com / demo123
           </p>
         </form>
       </div>

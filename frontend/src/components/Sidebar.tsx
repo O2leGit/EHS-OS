@@ -75,11 +75,14 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, userName, u
             </div>
           )}
           {!isMobile && expanded && (
-            <img
-              src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_300,h_86,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
-              alt="Parzy Consulting"
-              className="h-7 object-contain"
-            />
+            <div className="flex flex-col">
+              <img
+                src="https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg"
+                alt="Bio-Techne"
+                className="h-6 object-contain invert brightness-200"
+              />
+              <span className="text-[9px] text-gray-500 mt-0.5">Powered by Parzy Consulting</span>
+            </div>
           )}
         </div>
       </div>

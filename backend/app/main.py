@@ -61,7 +61,7 @@ async def public_fresh_redirect():
 @app.get("/api/public/analysis/{cache_bust}")
 async def public_analysis(response: Response, cache_bust: str = ""):
     """Public endpoint for Claude Chat / external AI analysis.
-    Returns a comprehensive overview of the Helix BioWorks demo tenant
+    Returns a comprehensive overview of the Bio-Techne demo tenant
     without requiring authentication.
     Append any unique path segment (e.g., /api/public/analysis/v5) to bust caches."""
     import time
@@ -73,7 +73,7 @@ async def public_analysis(response: Response, cache_bust: str = ""):
     from app.core.database import get_pool
     pool = await get_pool()
     async with pool.acquire() as db:
-        tenant = await db.fetchrow("SELECT id, name, slug FROM tenants WHERE slug = 'helix-bioworks'")
+        tenant = await db.fetchrow("SELECT id, name, slug FROM tenants WHERE slug = 'bio-techne'")
         if not tenant:
             return {"error": "Demo tenant not found"}
         tid = tenant["id"]
@@ -268,16 +268,16 @@ async def public_analysis(response: Response, cache_bust: str = ""):
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "note": "v4.0: multi-site management (4 sites), incident notifications (email/SMS), 28 incidents, 9 CAPAs, 5 documents, audit readiness with top_actions, rule-based risk briefing fallback, branding support",
             "platform": "EHS Operating System (EHS-OS)",
-            "description": "AI-native Environmental Health & Safety platform for life sciences companies",
+            "description": "AI-native Environmental Health & Safety platform built for Bio-Techne",
             "demo_tenant": tenant["name"],
             "live_urls": {
                 "frontend": "https://ehs-os.netlify.app",
                 "backend_api": "https://ehs-os-backend-production.up.railway.app",
             },
             "demo_credentials": {
-                "admin": {"email": "admin@helixbioworks.com", "password": "demo123", "name": "Sarah Chen"},
-                "manager": {"email": "jparker@helixbioworks.com", "password": "demo123", "name": "James Parker"},
-                "user": {"email": "mrodriguez@helixbioworks.com", "password": "demo123", "name": "Maria Rodriguez"},
+                "admin": {"email": "admin@bio-techne.com", "password": "demo123", "name": "Sarah Chen"},
+                "manager": {"email": "jparker@bio-techne.com", "password": "demo123", "name": "James Parker"},
+                "user": {"email": "mrodriguez@bio-techne.com", "password": "demo123", "name": "Maria Rodriguez"},
             },
             "kpi_summary": {
                 "incidents_this_month": incidents_mtd,
@@ -448,9 +448,10 @@ async def public_analysis(response: Response, cache_bust: str = ""):
                 ]
             },
             "branding": {
-                "brand_name": "Parzy Consulting",
-                "powered_by": "EHS-OS",
-                "logo_url": "https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_400,h_114,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png",
+                "brand_name": "Bio-Techne",
+                "powered_by": "Parzy Consulting",
+                "logo_url": "https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg",
+                "parzy_logo_url": "https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_400,h_114,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png",
                 "favicon_url": None,
                 "primary_color": "#1B2A4A",
                 "accent_color": "#2ECC71",

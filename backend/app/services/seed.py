@@ -1,4 +1,4 @@
-"""Seed database with Helix BioWorks demo data."""
+"""Seed database with Bio-Techne demo data."""
 import asyncio
 import json
 from datetime import date, datetime, timedelta, timezone
@@ -10,7 +10,7 @@ async def seed():
     await init_db()
     pool = await get_pool()
     async with pool.acquire() as db:
-        existing = await db.fetchrow("SELECT id FROM tenants WHERE slug = 'helix-bioworks'")
+        existing = await db.fetchrow("SELECT id FROM tenants WHERE slug = 'bio-techne'")
         if existing:
             print("Demo data already exists, skipping seed.")
             # Always run reseed to keep data fresh
@@ -20,24 +20,24 @@ async def seed():
         # Create tenant
         tenant = await db.fetchrow(
             """INSERT INTO tenants (name, slug)
-               VALUES ('Helix BioWorks', 'helix-bioworks') RETURNING id"""
+               VALUES ('Bio-Techne', 'bio-techne') RETURNING id"""
         )
         tid = tenant["id"]
 
         # Create users
         admin = await db.fetchrow(
             """INSERT INTO users (tenant_id, email, password_hash, full_name, role)
-               VALUES ($1, 'admin@helixbioworks.com', $2, 'Sarah Chen', 'admin') RETURNING id""",
+               VALUES ($1, 'admin@bio-techne.com', $2, 'Sarah Chen', 'admin') RETURNING id""",
             tid, hash_password("demo123"),
         )
         manager = await db.fetchrow(
             """INSERT INTO users (tenant_id, email, password_hash, full_name, role)
-               VALUES ($1, 'jparker@helixbioworks.com', $2, 'James Parker', 'manager') RETURNING id""",
+               VALUES ($1, 'jparker@bio-techne.com', $2, 'James Parker', 'manager') RETURNING id""",
             tid, hash_password("demo123"),
         )
         user = await db.fetchrow(
             """INSERT INTO users (tenant_id, email, password_hash, full_name, role)
-               VALUES ($1, 'mrodriguez@helixbioworks.com', $2, 'Maria Rodriguez', 'user') RETURNING id""",
+               VALUES ($1, 'mrodriguez@bio-techne.com', $2, 'Maria Rodriguez', 'user') RETURNING id""",
             tid, hash_password("demo123"),
         )
 
@@ -112,7 +112,7 @@ async def seed():
         # Create a fake analyzed document
         doc = await db.fetchrow(
             """INSERT INTO documents (tenant_id, filename, file_path, file_type, file_size, uploaded_by, status)
-               VALUES ($1, 'Helix_BioWorks_EHS_Manual_2024.pdf', '/seed/manual.pdf', '.pdf', 2048000, $2, 'analyzed')
+               VALUES ($1, 'Bio_Techne_EHS_Manual_2024.pdf', '/seed/manual.pdf', '.pdf', 2048000, $2, 'analyzed')
                RETURNING id""",
             tid, admin["id"],
         )
@@ -146,10 +146,10 @@ async def seed():
             tid, "Analyze this document chunk against the Pfizer 4-Tier EHS framework...",
         )
 
-        print("Seeded Helix BioWorks demo data successfully!")
-        print("  Login: admin@helixbioworks.com / demo123")
-        print("  Login: jparker@helixbioworks.com / demo123")
-        print("  Login: mrodriguez@helixbioworks.com / demo123")
+        print("Seeded Bio-Techne demo data successfully!")
+        print("  Login: admin@bio-techne.com / demo123")
+        print("  Login: jparker@bio-techne.com / demo123")
+        print("  Login: mrodriguez@bio-techne.com / demo123")
 
         # Run reseed to apply enrichments
         await reseed_demo_data(db)
@@ -162,15 +162,15 @@ async def reseed_demo_data(db):
     now = datetime.now(timezone.utc)
 
     # --- Resolve tenant and user IDs ---
-    tenant = await db.fetchrow("SELECT id FROM tenants WHERE slug = 'helix-bioworks'")
+    tenant = await db.fetchrow("SELECT id FROM tenants WHERE slug = 'bio-techne'")
     if not tenant:
-        print("reseed: No helix-bioworks tenant found, skipping.")
+        print("reseed: No bio-techne tenant found, skipping.")
         return
     tid = tenant["id"]
 
-    admin = await db.fetchrow("SELECT id FROM users WHERE email = 'admin@helixbioworks.com'")
-    manager = await db.fetchrow("SELECT id FROM users WHERE email = 'jparker@helixbioworks.com'")
-    user = await db.fetchrow("SELECT id FROM users WHERE email = 'mrodriguez@helixbioworks.com'")
+    admin = await db.fetchrow("SELECT id FROM users WHERE email = 'admin@bio-techne.com'")
+    manager = await db.fetchrow("SELECT id FROM users WHERE email = 'jparker@bio-techne.com'")
+    user = await db.fetchrow("SELECT id FROM users WHERE email = 'mrodriguez@bio-techne.com'")
 
     if not all([admin, manager, user]):
         print("reseed: Missing user accounts, skipping.")
@@ -258,7 +258,7 @@ async def reseed_demo_data(db):
     # =========================================================================
     new_docs = [
         {
-            "filename": "Helix_BioWorks_Chemical_Hygiene_Plan_2025.pdf",
+            "filename": "Bio_Techne_Chemical_Hygiene_Plan_2025.pdf",
             "file_path": "/seed/chemical_hygiene.pdf",
             "file_type": ".pdf",
             "file_size": 1536000,
@@ -281,7 +281,7 @@ async def reseed_demo_data(db):
             ],
         },
         {
-            "filename": "Helix_BioWorks_Emergency_Action_Plan_2024.pdf",
+            "filename": "Bio_Techne_Emergency_Action_Plan_2024.pdf",
             "file_path": "/seed/emergency_action.pdf",
             "file_type": ".pdf",
             "file_size": 892000,
@@ -301,7 +301,7 @@ async def reseed_demo_data(db):
             ],
         },
         {
-            "filename": "Helix_BioWorks_Waste_Management_SOP_2025.pdf",
+            "filename": "Bio_Techne_Waste_Management_SOP_2025.pdf",
             "file_path": "/seed/waste_management.pdf",
             "file_type": ".pdf",
             "file_size": 724000,
@@ -321,7 +321,7 @@ async def reseed_demo_data(db):
             ],
         },
         {
-            "filename": "Helix_BioWorks_Training_Matrix_Q1_2026.xlsx",
+            "filename": "Bio_Techne_Training_Matrix_Q1_2026.xlsx",
             "file_path": "/seed/training_matrix.xlsx",
             "file_type": ".xlsx",
             "file_size": 256000,
@@ -398,7 +398,7 @@ async def reseed_demo_data(db):
             "status": "covered",
             "gaps": [],
             "risk": None,
-            "reasoning": "Section 1 of the Helix BioWorks EHS Manual establishes corporate EHS policy with signed leadership commitment, scope across all facilities, and annual review commitment. Meets ISO 45001 Clause 5.2 requirements.",
+            "reasoning": "Section 1 of the Bio-Techne EHS Manual establishes corporate EHS policy with signed leadership commitment, scope across all facilities, and annual review commitment. Meets ISO 45001 Clause 5.2 requirements.",
         },
         ("Governance Structure", None): {
             "status": "covered",
@@ -440,7 +440,7 @@ async def reseed_demo_data(db):
             "status": "gap",
             "gaps": ["No radiation safety program (appropriate if no radiation sources present)"],
             "risk": "low",
-            "reasoning": "No documentation found addressing radiation safety. Helix BioWorks does not currently operate radiation-producing equipment. If operations expand to include isotope work, a Radiation Safety Program per 10 CFR 20 will be needed.",
+            "reasoning": "No documentation found addressing radiation safety. Bio-Techne does not currently operate radiation-producing equipment. If operations expand to include isotope work, a Radiation Safety Program per 10 CFR 20 will be needed.",
         },
         ("Ergonomics", "200"): {
             "status": "gap",
@@ -605,10 +605,10 @@ async def reseed_demo_data(db):
     # Block 5: Multi-site seed data
     # =========================================================================
     sites_data = [
-        ("Denver Research Center", "DEN", "lab", 85),
-        ("San Jose Manufacturing", "SJC", "manufacturing", 120),
-        ("Minneapolis HQ", "MSP", "office", 200),
-        ("Cambridge Lab", "CAM", "lab", 45),
+        ("Minneapolis HQ", "MSP", "headquarters", 350),
+        ("St. Paul GMP Facility", "STP", "manufacturing", 120),
+        ("San Jose R&D", "SJC", "lab", 200),
+        ("Denver Operations", "DEN", "warehouse", 50),
     ]
 
     site_ids = {}
@@ -640,14 +640,14 @@ async def reseed_demo_data(db):
 
     # Add incidents for other sites
     multi_site_incidents = [
-        ("INC-0021", "injury", "medium", "Forklift struck storage rack", "Forklift operator clipped corner of storage rack during turn in warehouse area. Minor rack damage, no injuries.", "San Jose - Warehouse", "Anonymous", "open", 8, "SJC"),
-        ("INC-0022", "near_miss", "high", "Pallet fell during unloading", "Pallet shifted and fell from second tier during manual unloading. No personnel in drop zone.", "San Jose - Loading Dock", "James Parker", "open", 5, "SJC"),
-        ("INC-0023", "hazard", "medium", "Emergency exit partially blocked by equipment", "Quarterly inspection found packaging equipment staged within 3 feet of emergency exit door.", "San Jose - Packaging Area", "Maria Rodriguez", "open", 2, "SJC"),
-        ("INC-0024", "environmental", "low", "Oil stain observed on warehouse floor near drain", "Small oil stain approximately 12 inches diameter observed near floor drain in warehouse.", "San Jose - Warehouse", "Anonymous", "closed", 12, "SJC"),
+        ("INC-0021", "injury", "medium", "Forklift struck storage rack", "Forklift operator clipped corner of storage rack during turn in warehouse area. Minor rack damage, no injuries.", "Denver - Warehouse", "Anonymous", "open", 8, "DEN"),
+        ("INC-0022", "near_miss", "high", "Pallet fell during unloading", "Pallet shifted and fell from second tier during manual unloading. No personnel in drop zone.", "Denver - Loading Dock", "James Parker", "open", 5, "DEN"),
+        ("INC-0023", "hazard", "medium", "Emergency exit partially blocked by equipment", "Quarterly inspection found packaging equipment staged within 3 feet of emergency exit door.", "St. Paul - Packaging Area", "Maria Rodriguez", "open", 2, "STP"),
+        ("INC-0024", "environmental", "low", "Oil stain observed on warehouse floor near drain", "Small oil stain approximately 12 inches diameter observed near floor drain in warehouse.", "Denver - Warehouse", "Anonymous", "closed", 12, "DEN"),
         ("INC-0025", "near_miss", "low", "Wet floor in breakroom with no sign", "Water from ice machine overflow created wet area in breakroom. No wet floor sign posted.", "Minneapolis - Breakroom", "Sarah Chen", "closed", 20, "MSP"),
         ("INC-0026", "observation", "low", "First aid kit expired supplies", "Monthly first aid kit check found 4 items past expiration date in 2nd floor kit.", "Minneapolis - 2nd Floor", "Maria Rodriguez", "closed", 15, "MSP"),
-        ("INC-0027", "hazard", "high", "Biosafety cabinet certification expired 2 months", "BSC-2 in Lab A found with certification expired since January 2026. Cabinet has been in active use.", "Cambridge - Lab A", "James Parker", "open", 6, "CAM"),
-        ("INC-0028", "near_miss", "medium", "Cryogenic liquid splash during transfer", "Liquid nitrogen splashed during dewar transfer when receiving vessel was not pre-cooled.", "Cambridge - Lab B", "Anonymous", "open", 3, "CAM"),
+        ("INC-0027", "hazard", "high", "Biosafety cabinet certification expired 2 months", "BSC-2 in Lab A found with certification expired since January 2026. Cabinet has been in active use.", "San Jose - Lab A", "James Parker", "open", 6, "SJC"),
+        ("INC-0028", "near_miss", "medium", "Cryogenic liquid splash during transfer", "Liquid nitrogen splashed during dewar transfer when receiving vessel was not pre-cooled.", "San Jose - Lab B", "Anonymous", "open", 3, "SJC"),
     ]
 
     for inc_num, itype, sev, title, desc, loc, reporter, status, days_ago, site_code in multi_site_incidents:

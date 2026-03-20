@@ -61,8 +61,9 @@ interface AuditFactor {
 }
 
 interface AuditRecommendation {
-  text: string;
-  priority: string;
+  action: string;
+  points: number;
+  effort: string;
 }
 
 interface AuditReadiness {
@@ -334,11 +335,18 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
     count: d.count,
   }));
 
-  const capaChartData = capaStatus.map((s) => ({
+  const capaChartDataBase = capaStatus.map((s) => ({
     name: formatCapaStatus(s.status),
     value: s.count,
     fill: CAPA_COLORS[s.status] ?? "#6b7280",
   }));
+  // Add overdue segment from summary if not already in capa-status response
+  const hasOverdue = capaStatus.some((s) => s.status === "overdue");
+  const overdueCount = hasOverdue ? 0 : (summary?.overdue_capas ?? 0);
+  const capaChartData = overdueCount > 0
+    ? [...capaChartDataBase, { name: "Overdue", value: overdueCount, fill: CAPA_COLORS["overdue"] }]
+    : capaChartDataBase;
+  const totalCapaCount = capaChartData.reduce((sum, s) => sum + s.value, 0);
 
   const renderHeatmapCell = (item: FrameworkCoverage, idx: number) => {
     const status = item.coverage_status ?? "gap";
@@ -698,6 +706,13 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                   </Pie>
+                  {/* Center text showing total */}
+                  <text x="50%" y="45%" textAnchor="middle" fill="#e5e7eb" fontSize="22" fontWeight="bold" dominantBaseline="middle">
+                    {totalCapaCount}
+                  </text>
+                  <text x="50%" y="58%" textAnchor="middle" fill="#9ca3af" fontSize="11" dominantBaseline="middle">
+                    Total CAPAs
+                  </text>
                   <Tooltip
                     contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #374151", borderRadius: "6px" }}
                     labelStyle={{ color: "#e5e7eb" }}
@@ -705,7 +720,10 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
                   />
                   <Legend
                     wrapperStyle={{ fontSize: "12px", color: "#9ca3af" }}
-                    formatter={(value) => <span style={{ color: "#9ca3af" }}>{value}</span>}
+                    formatter={(value: string) => {
+                      const entry = capaChartData.find((d) => d.name === value);
+                      return <span style={{ color: "#9ca3af" }}>{value} ({entry?.value ?? 0})</span>;
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -1099,18 +1117,19 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Recommendations</h4>
                 {auditReadiness.recommendations.map((rec, i) => {
-                  const priorityBadge = rec.priority === "high" ? "bg-red-500/15 text-red-400 border-red-500/30"
-                    : rec.priority === "medium" ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                  const effortBadge = rec.effort === "high" ? "bg-red-500/15 text-red-400 border-red-500/30"
+                    : rec.effort === "medium" ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
                     : "bg-green-500/15 text-green-400 border-green-500/30";
                   return (
                     <div key={i} className="flex items-start gap-3 bg-gray-900/50 border border-gray-700 rounded-lg p-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${priorityBadge}`}>
-                            {rec.priority}
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${effortBadge}`}>
+                            {rec.effort} effort
                           </span>
+                          <span className="text-xs text-cyan-400 font-medium">+{rec.points} pts</span>
                         </div>
-                        <p className="text-sm text-gray-300">{rec.text}</p>
+                        <p className="text-sm text-gray-300">{rec.action}</p>
                       </div>
                       <button
                         onClick={() => {
