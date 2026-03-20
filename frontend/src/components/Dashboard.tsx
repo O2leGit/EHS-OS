@@ -8,6 +8,7 @@ import DashboardHome from "./DashboardHome";
 import DocumentsPage from "./DocumentsPage";
 import IncidentsPage from "./IncidentsPage";
 import CapaPage from "./CapaPage";
+import AdminPage from "./AdminPage";
 import ChatPanel from "./ChatPanel";
 
 interface DashboardProps {
@@ -15,7 +16,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type Page = "dashboard" | "documents" | "incidents" | "capas";
+type Page = "dashboard" | "documents" | "incidents" | "capas" | "admin";
 
 export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
@@ -39,15 +40,17 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const renderPage = () => {
     switch (currentPage) {
       case "dashboard":
-        return <DashboardHome token={token} />;
+        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} />;
       case "documents":
         return <DocumentsPage token={token} />;
       case "incidents":
         return <IncidentsPage token={token} />;
       case "capas":
         return <CapaPage token={token} />;
+      case "admin":
+        return <AdminPage token={token} userRole={user?.role || ""} />;
       default:
-        return <DashboardHome token={token} />;
+        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} />;
     }
   };
 
@@ -58,6 +61,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         onNavigate={setCurrentPage}
         onLogout={handleLogout}
         userName={user?.full_name || ""}
+        userRole={user?.role || ""}
       />
       <main className={`flex-1 overflow-y-auto transition-all ${chatOpen ? "mr-[380px]" : ""}`}>
         <div className="p-6 max-w-7xl mx-auto">
