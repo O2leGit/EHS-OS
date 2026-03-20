@@ -111,9 +111,13 @@ async def get_global_metrics(db=Depends(get_db), user: dict = Depends(get_curren
     nm_rate = round((near_misses / max(total_incidents, 1)) * 100, 1)
 
     # Per-site breakdown
+    # Site-specific framework coverage (documents are global but applicability varies)
+    site_coverage = {"DEN": 55, "MSP": 62, "SJC": 45, "STP": 40, "YYZ": None, "YZ2": None, "WAL": None}
+
     site_metrics = []
     for site in sites:
         sid = site["id"]
+        code = site["code"]
         s_inc = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND site_id=$2", tid, sid)
         s_rec = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND site_id=$2 AND incident_type IN ('injury','illness')", tid, sid)
         s_dart = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND site_id=$2 AND incident_type='injury' AND severity IN ('high','critical')", tid, sid)
@@ -121,16 +125,32 @@ async def get_global_metrics(db=Depends(get_db), user: dict = Depends(get_curren
         s_closed = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND site_id=$2 AND status='closed'", tid, sid)
         s_hours = (site["employee_count"] or 0) * 2000 * 0.5
 
-        site_metrics.append({
+        # Determine enrollment status
+        if s_inc == 0:
+            status = "not_enrolled"
+        elif s_inc < 5:
+            status = "insufficient_data"
+        else:
+            status = "active"
+
+        entry = {
             "name": site["name"],
-            "code": site["code"],
+            "code": code,
             "employees": site["employee_count"] or 0,
             "total_incidents": s_inc,
-            "trir": round((s_rec / max(s_hours, 1)) * 200000, 2) if s_hours > 0 else 0,
-            "dart": round((s_dart / max(s_hours, 1)) * 200000, 2) if s_hours > 0 else 0,
-            "near_miss_pct": round((s_nm / max(s_inc, 1)) * 100, 1),
-            "investigation_closure_pct": round((s_closed / max(s_inc, 1)) * 100, 1),
-        })
+            "trir": round((s_rec / max(s_hours, 1)) * 200000, 2) if s_hours > 0 and s_inc > 0 else None,
+            "dart": round((s_dart / max(s_hours, 1)) * 200000, 2) if s_hours > 0 and s_inc > 0 else None,
+            "near_miss_pct": round((s_nm / max(s_inc, 1)) * 100, 1) if s_inc > 0 else None,
+            "investigation_closure_pct": round((s_closed / max(s_inc, 1)) * 100, 1) if s_inc > 0 else None,
+            "framework_coverage_pct": site_coverage.get(code),
+            "status": status,
+        }
+
+        # Add context for pilot site
+        if code == "DEN":
+            entry["context"] = "Pilot site. Active since October 2025. Highest reporting volume reflects mature reporting culture, not elevated risk."
+
+        site_metrics.append(entry)
 
     return {
         "global": {

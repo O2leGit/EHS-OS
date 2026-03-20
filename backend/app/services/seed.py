@@ -635,7 +635,7 @@ async def reseed_demo_data(db):
         ("Toronto Diagnostics", "YYZ", "lab", 80),
         ("Toronto R&D", "YZ2", "lab", 60),
         ("San Jose R&D", "SJC", "lab", 200),
-        ("Denver Operations", "DEN", "warehouse", 45),
+        ("Denver Operations", "DEN", "warehouse", 180),
     ]
 
     # Clean up old sites that don't match new structure

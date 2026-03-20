@@ -420,12 +420,11 @@ export default function ChatPanel({ token, currentPage, onClose, onNavigate, ini
           <div className="space-y-3">
             <div className="bg-navy-800 rounded-lg p-4 border border-navy-700">
               <p className="text-sm text-gray-300 leading-relaxed">
-                I&apos;m your EHS advisor, configured with Parzy Consulting&apos;s expertise and your facility&apos;s documents. I know your framework coverage, your incidents, your open corrective actions, and relevant OSHA and EPA regulations.
+                I&apos;m your EHS advisor. I&apos;ve analyzed your facility documents, incident history, and corrective actions across all 7 Bio-Techne sites. I know your framework gaps, your DART trends, and relevant OSHA and EPA regulations. Ask me anything about your EHS program.
               </p>
-              <p className="text-sm text-gray-300 mt-2 font-medium">Ask me anything about your EHS program.</p>
             </div>
             <div className="space-y-2">
-              {["What are my biggest risks right now?", "Which CAPAs should I prioritize?", "Help me write an SOP", "Explain a regulation"].map((p) => (
+              {["What are my biggest risks right now?", "Compare Denver vs Minneapolis safety performance", "Why is our DART rate trending up in CY26?", "Help me prepare for the next ISO 14001 audit"].map((p) => (
                 <button
                   key={p}
                   onClick={() => sendMessage(p)}

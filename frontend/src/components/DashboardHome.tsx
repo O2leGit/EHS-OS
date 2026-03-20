@@ -632,32 +632,59 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
                 </thead>
                 <tbody>
                   {globalMetrics.sites.map((site: any) => (
-                    <tr key={site.code} className="border-b border-navy-700/50 hover:bg-navy-700/30">
+                    <tr key={site.code} className={`border-b border-navy-700/50 hover:bg-navy-700/30 ${site.status === 'not_enrolled' ? 'opacity-50' : ''}`}>
                       <td className="py-2.5 px-2">
-                        <div className="text-white font-medium">{site.name}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-white font-medium">{site.name}</div>
+                          {site.status === 'not_enrolled' && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-700 text-gray-400 border border-gray-600">Phase 2</span>
+                          )}
+                          {site.status === 'insufficient_data' && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-900/30 text-amber-400 border border-amber-800/30">Ramping</span>
+                          )}
+                          {site.context && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-900/30 text-blue-400 border border-blue-800/30">Pilot</span>
+                          )}
+                        </div>
                         <div className="text-gray-500">{site.code}</div>
                       </td>
                       <td className="text-center text-gray-300 py-2.5 px-2">{site.employees}</td>
                       <td className="text-center text-gray-300 py-2.5 px-2">{site.total_incidents}</td>
                       <td className="text-center py-2.5 px-2">
-                        <span className={site.trir < 2.1 ? 'text-green-400' : site.trir < 4 ? 'text-amber-400' : 'text-red-400'}>
-                          {site.trir}
-                        </span>
+                        {site.trir != null ? (
+                          <span className={site.trir < 2.1 ? 'text-green-400' : site.trir < 4 ? 'text-amber-400' : 'text-red-400'}>
+                            {site.trir}
+                          </span>
+                        ) : (
+                          <span className="text-gray-600">--</span>
+                        )}
                       </td>
                       <td className="text-center py-2.5 px-2">
-                        <span className={site.dart < 1.2 ? 'text-green-400' : site.dart < 2.5 ? 'text-amber-400' : 'text-red-400'}>
-                          {site.dart}
-                        </span>
+                        {site.dart != null ? (
+                          <span className={site.dart < 1.2 ? 'text-green-400' : site.dart < 2.5 ? 'text-amber-400' : 'text-red-400'}>
+                            {site.dart}
+                          </span>
+                        ) : (
+                          <span className="text-gray-600">--</span>
+                        )}
                       </td>
                       <td className="text-center py-2.5 px-2">
-                        <span className={site.near_miss_pct >= 50 ? 'text-green-400' : site.near_miss_pct >= 30 ? 'text-amber-400' : 'text-red-400'}>
-                          {site.near_miss_pct}%
-                        </span>
+                        {site.near_miss_pct != null ? (
+                          <span className={site.near_miss_pct >= 50 ? 'text-green-400' : site.near_miss_pct >= 30 ? 'text-amber-400' : 'text-red-400'}>
+                            {site.near_miss_pct}%
+                          </span>
+                        ) : (
+                          <span className="text-gray-600">--</span>
+                        )}
                       </td>
                       <td className="text-center py-2.5 px-2">
-                        <span className={site.investigation_closure_pct >= 70 ? 'text-green-400' : site.investigation_closure_pct >= 40 ? 'text-amber-400' : 'text-red-400'}>
-                          {site.investigation_closure_pct}%
-                        </span>
+                        {site.investigation_closure_pct != null ? (
+                          <span className={site.investigation_closure_pct >= 70 ? 'text-green-400' : site.investigation_closure_pct >= 40 ? 'text-amber-400' : 'text-red-400'}>
+                            {site.investigation_closure_pct}%
+                          </span>
+                        ) : (
+                          <span className="text-gray-600">--</span>
+                        )}
                       </td>
                     </tr>
                   ))}

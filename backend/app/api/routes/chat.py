@@ -99,13 +99,13 @@ async def chat_history(db=Depends(get_db), current_user: dict = Depends(get_curr
 @router.get("/suggested-prompts")
 async def suggested_prompts(page: Optional[str] = None):
     base = [
-        "What are my biggest EHS gaps right now?",
-        "Help me write an SOP for chemical waste disposal",
-        "Explain OSHA requirements for lab safety",
+        "What are my biggest risks right now?",
+        "Compare Denver vs Minneapolis safety performance",
+        "Why is our DART rate trending up in CY26?",
     ]
     page_prompts = {
-        "documents": ["Analyze my latest upload", "What framework areas am I missing?"],
-        "incidents": ["What patterns do you see in recent incidents?", "Help me classify this incident"],
+        "documents": ["What framework areas am I missing?", "Help me prepare for the next ISO 14001 audit"],
+        "incidents": ["What patterns do you see in recent incidents?", "Analyze Denver's incident volume vs other sites"],
         "capas": ["Which CAPAs are overdue?", "Help me write a root cause analysis"],
         "dashboard": ["Give me an executive summary", "What should I prioritize this week?"],
     }

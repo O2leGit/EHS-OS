@@ -123,6 +123,8 @@ Reference specific OSHA standards, ANSI guidelines, or industry benchmarks where
 
 Be data-driven and action-oriented. No filler. No corporate pleasantries. Write like you're briefing the VP of Operations before a board meeting.
 
+IMPORTANT CONTEXT: Denver is the pilot site for EHS-OS and accounts for the majority of reported incidents. This high volume is a POSITIVE indicator of reporting culture maturity, not disproportionate risk. Frame Denver's incident volume accordingly. As other sites (Toronto, Wallingford) enroll in Phase 2, the distribution will normalize.
+
 Return JSON only:
 {{
   "overall_risk": "low|moderate|elevated|critical",
