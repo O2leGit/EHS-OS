@@ -136,7 +136,13 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, userName, u
           <p className="text-xs text-gray-500 mt-1 truncate">{userName}</p>
         )}
         {expanded && (
-          <p className="text-xs text-gray-600 mt-2 text-center">Powered by EHS-OS</p>
+          <div className="flex items-center justify-center gap-1 mt-2">
+            <img
+              src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_120,h_34,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
+              alt="Parzy Consulting"
+              className="h-3.5 object-contain opacity-50"
+            />
+          </div>
         )}
       </div>
     </div>

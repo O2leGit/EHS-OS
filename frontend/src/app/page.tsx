@@ -86,10 +86,17 @@ export default function Home() {
           <img
             src="https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg"
             alt="Bio-Techne"
-            className="h-12 mx-auto mb-4 object-contain invert brightness-200"
+            className="h-12 mx-auto mb-3 object-contain invert brightness-200"
           />
           <h1 className="text-xl font-bold text-white">EHS Management System</h1>
-          <p className="text-gray-400 mt-1 text-sm">Powered by Parzy Consulting</p>
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <span className="text-gray-500 text-xs">Powered by</span>
+            <img
+              src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_200,h_57,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
+              alt="Parzy Consulting"
+              className="h-5 object-contain opacity-70"
+            />
+          </div>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           {error && (
