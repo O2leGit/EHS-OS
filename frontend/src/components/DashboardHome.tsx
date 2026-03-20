@@ -613,7 +613,10 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
 
           {/* Site Benchmarking Table */}
           <div className="bg-navy-800 rounded-xl border border-navy-700 p-5">
-            <h3 className="text-white font-semibold text-sm mb-4">Site Benchmarking</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold text-sm">Site Benchmarking</h3>
+              <span className="text-[10px] text-gray-500 bg-navy-700/50 px-2 py-0.5 rounded">Rolling 12 Months | FY2026 YTD</span>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>

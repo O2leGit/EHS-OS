@@ -223,10 +223,11 @@ const features: Feature[] = [
 ];
 
 const competitorComparison = [
+  { competitor: "UCLA EHS", their: "University-grade portal. Static forms, manual tracking, no AI. Good reference design but no intelligence layer.", ours: "AI-native platform. Reads your documents, maps compliance gaps automatically, predicts risks before they become incidents." },
   { competitor: "Cority Cortex AI", their: "9 separate AI agents for specific tasks. $72-290K/yr. Enterprise-only.", ours: "One unified AI expert. Conversational. Context-aware. 1/10th the cost." },
-  { competitor: "VelocityEHS", their: "Dashboard analytics on existing data. AI bolt-on.", ours: "AI reads documents, maps gaps, predicts risks, and tells you what to do." },
-  { competitor: "SafetyCulture", their: "AI generates inspection template questions. That's it.", ours: "AI ingests document libraries, produces coverage analysis, acts as ongoing advisor." },
-  { competitor: "EHS Momentum", their: "No AI. Manual processes. Legacy interface.", ours: "AI-native from the ground up. Modern UX. Predictive analytics." },
+  { competitor: "VelocityEHS", their: "Dashboard analytics on existing data. AI bolt-on. No document intelligence.", ours: "AI reads documents, maps gaps against Pfizer 4-Tier framework, predicts risks, and tells you what to do." },
+  { competitor: "SafetyCulture", their: "AI generates inspection template questions. No compliance mapping. No executive reporting.", ours: "AI ingests document libraries, produces coverage analysis, generates executive reports, acts as ongoing EHS advisor." },
+  { competitor: "EHS Momentum", their: "No AI. Manual processes. Legacy interface. No multi-site benchmarking.", ours: "AI-native from the ground up. Modern UX. Predictive analytics. Global TRIR/DART rollup across all sites." },
 ];
 
 export default function FeaturesPage() {
