@@ -450,7 +450,7 @@ async def public_analysis(response: Response, cache_bust: str = ""):
             "branding": {
                 "brand_name": "Parzy Consulting",
                 "powered_by": "EHS-OS",
-                "logo_url": None,
+                "logo_url": "https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_400,h_114,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png",
                 "favicon_url": None,
                 "primary_color": "#1B2A4A",
                 "accent_color": "#2ECC71",

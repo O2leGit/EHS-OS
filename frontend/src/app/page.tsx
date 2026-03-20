@@ -83,12 +83,11 @@ export default function Home() {
     <div className="min-h-screen flex items-center justify-center">
       <div className="card w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-safe/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-safe" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-white">Parzy Consulting</h1>
+          <img
+            src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_400,h_114,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
+            alt="Parzy Consulting"
+            className="h-16 mx-auto mb-4 object-contain"
+          />
           <p className="text-gray-400 mt-1 text-sm">EHS Operating System</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
