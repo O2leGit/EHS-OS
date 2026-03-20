@@ -50,15 +50,18 @@ async def health():
 
 
 @app.get("/api/public/analysis")
-async def public_analysis(response: Response):
+@app.get("/api/public/analysis/{cache_bust}")
+async def public_analysis(response: Response, cache_bust: str = ""):
     """Public endpoint for Claude Chat / external AI analysis.
     Returns a comprehensive overview of the Helix BioWorks demo tenant
-    without requiring authentication."""
+    without requiring authentication.
+    Append any unique path segment (e.g., /api/public/analysis/v5) to bust caches."""
     import time
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     response.headers["ETag"] = f'"{int(time.time())}"'
+    response.headers["Vary"] = "*"
     from app.core.database import get_pool
     pool = await get_pool()
     async with pool.acquire() as db:
@@ -124,7 +127,9 @@ async def public_analysis(response: Response):
         open_c = await db.fetchval(
             "SELECT COUNT(*) FROM capas WHERE tenant_id=$1 AND status IN ('open','in_progress')", tid)
         total_c = await db.fetchval("SELECT COUNT(*) FROM capas WHERE tenant_id=$1", tid)
-        capa_score = int(max(0, 100 - (overdue_c * 20) - (open_c * 5)))
+        closed_c = await db.fetchval("SELECT COUNT(*) FROM capas WHERE tenant_id=$1 AND status = 'closed'", tid)
+        closure_rate = closed_c / max(total_c, 1)
+        capa_score = int(max(0, min(100, closure_rate * 100 - (overdue_c * 15))))
 
         total_inc = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1", tid)
         closed_inc = await db.fetchval(
@@ -136,7 +141,7 @@ async def public_analysis(response: Response):
         injuries = await db.fetchval(
             "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND incident_type='injury'", tid)
         nm_ratio = near_misses / max(injuries, 1)
-        nm_score = min(100, int((nm_ratio / 10) * 100))
+        nm_score = min(100, int((nm_ratio / 3) * 100))
 
         recent_docs = await db.fetchval(
             "SELECT COUNT(*) FROM documents WHERE tenant_id=$1 AND created_at > NOW() - INTERVAL '90 days'", tid)
@@ -172,7 +177,7 @@ async def public_analysis(response: Response):
         from datetime import datetime, timezone
         import uuid
         return {
-            "data_version": "4.0-multisite-notifications",
+            "data_version": "4.1-audit-recalibrated",
             "request_id": str(uuid.uuid4()),
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "note": "v4.0: multi-site management (4 sites), incident notifications (email/SMS), 28 incidents, 9 CAPAs, 5 documents, audit readiness with top_actions, rule-based risk briefing fallback, branding support",

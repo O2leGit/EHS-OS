@@ -27,7 +27,11 @@ async def get_audit_readiness(db=Depends(get_db), user: dict = Depends(get_curre
         "SELECT COUNT(*) FROM capas WHERE tenant_id=$1::uuid AND status != 'closed' AND due_date < CURRENT_DATE", tid
     )
     total_capas = await db.fetchval("SELECT COUNT(*) FROM capas WHERE tenant_id=$1::uuid", tid)
-    capa_score = int(max(0, 100 - (overdue_capas * 20) - (open_capas * 5)))
+    closed_capas = await db.fetchval(
+        "SELECT COUNT(*) FROM capas WHERE tenant_id=$1::uuid AND status = 'closed'", tid
+    )
+    closure_rate = closed_capas / max(total_capas, 1)
+    capa_score = int(max(0, min(100, closure_rate * 100 - (overdue_capas * 15))))
 
     # Factor 3: Incident Investigation (weight 20%)
     total_incidents = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid", tid)
@@ -44,7 +48,8 @@ async def get_audit_readiness(db=Depends(get_db), user: dict = Depends(get_curre
         "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid AND incident_type='injury'", tid
     )
     nm_ratio = near_misses / max(injuries, 1)
-    nm_score = min(100, int((nm_ratio / 10) * 100))
+    # Score: ratio >= 3 = 100, ratio >= 2 = 75, ratio >= 1 = 50, below = 25
+    nm_score = min(100, int((nm_ratio / 3) * 100))
 
     # Factor 5: Document Freshness (weight 10%)
     recent_docs = await db.fetchval(
