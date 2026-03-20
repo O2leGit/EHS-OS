@@ -66,7 +66,8 @@ interface AuditRecommendation {
 }
 
 interface AuditReadiness {
-  score: number;
+  overall_score: number;
+  score?: number;
   level: string;
   factors: AuditFactor[];
   recommendations: AuditRecommendation[];
@@ -184,7 +185,7 @@ function AiPromptBar({ prompts, onOpenChat }: { prompts: string[]; onOpenChat?: 
             onClick={() => onOpenChat(prompt)}
             className="bg-[#111D35] hover:bg-[#1B2A4A] border border-[#1E3050] hover:border-cyan-500/30 rounded-lg px-4 py-3 cursor-pointer transition-all text-left group"
           >
-            <span className="text-xs text-cyan-400 block mb-0.5">Ask AI</span>
+            <span className="text-xs text-cyan-400 block mb-0.5">Ask EHS AI Assistant</span>
             <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{prompt}</span>
           </button>
         ))}
@@ -309,7 +310,7 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
   ];
 
   // Audit readiness gauge helpers
-  const auditScore = auditReadiness?.score ?? 0;
+  const auditScore = auditReadiness?.overall_score ?? auditReadiness?.score ?? 0;
   const auditGaugeColor = auditScore >= 80 ? "#22c55e" : auditScore >= 60 ? "#eab308" : auditScore >= 40 ? "#f97316" : "#ef4444";
   const auditLevel = auditReadiness?.level || (auditScore >= 80 ? "Audit Ready" : auditScore >= 60 ? "Needs Attention" : auditScore >= 40 ? "At Risk" : "Critical Gaps");
   const auditLevelTextColor = auditScore >= 80 ? "text-green-400" : auditScore >= 60 ? "text-yellow-400" : auditScore >= 40 ? "text-orange-400" : "text-red-400";
