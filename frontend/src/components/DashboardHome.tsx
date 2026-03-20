@@ -422,7 +422,26 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
         </div>
       )}
 
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      {/* Bio-Techne Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <img
+            src="https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg"
+            alt="Bio-Techne"
+            className="h-8 object-contain invert brightness-200"
+          />
+          <div className="h-6 w-px bg-navy-700" />
+          <h1 className="text-2xl font-bold">EHS Dashboard</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-gray-500">Powered by</span>
+          <img
+            src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_120,h_34,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
+            alt="Parzy Consulting"
+            className="h-4 object-contain opacity-60"
+          />
+        </div>
+      </div>
 
       {/* Weekly Risk Briefing Banner */}
       {!briefingLoading && (

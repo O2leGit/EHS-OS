@@ -266,7 +266,7 @@ async def public_analysis(response: Response, cache_bust: str = ""):
             "data_version": "4.1-audit-recalibrated",
             "request_id": str(uuid.uuid4()),
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "note": "v4.0: multi-site management (4 sites), incident notifications (email/SMS), 28 incidents, 9 CAPAs, 5 documents, audit readiness with top_actions, rule-based risk briefing fallback, branding support",
+            "note": "v5.0: Bio-Techne demo, 6 sites (MSP, STP, WAL, YYZ, YZ2, SJC), 28 incidents, 9 CAPAs, TRIR/DART metrics, AI executive reports, predictive briefing, audit readiness with top_actions",
             "platform": "EHS Operating System (EHS-OS)",
             "description": "AI-native Environmental Health & Safety platform built for Bio-Techne",
             "demo_tenant": tenant["name"],

@@ -10,6 +10,15 @@ async def seed():
     await init_db()
     pool = await get_pool()
     async with pool.acquire() as db:
+        # Migrate from helix-bioworks to bio-techne if needed
+        old_tenant = await db.fetchrow("SELECT id FROM tenants WHERE slug = 'helix-bioworks'")
+        if old_tenant:
+            print("Migrating tenant from helix-bioworks to bio-techne...")
+            await db.execute("UPDATE tenants SET name='Bio-Techne', slug='bio-techne' WHERE slug='helix-bioworks'")
+            await db.execute("UPDATE users SET email='admin@bio-techne.com' WHERE email='admin@helixbioworks.com'")
+            await db.execute("UPDATE users SET email='jparker@bio-techne.com' WHERE email='jparker@helixbioworks.com'")
+            await db.execute("UPDATE users SET email='mrodriguez@bio-techne.com' WHERE email='mrodriguez@helixbioworks.com'")
+
         existing = await db.fetchrow("SELECT id FROM tenants WHERE slug = 'bio-techne'")
         if existing:
             print("Demo data already exists, skipping seed.")
@@ -605,11 +614,16 @@ async def reseed_demo_data(db):
     # Block 5: Multi-site seed data
     # =========================================================================
     sites_data = [
-        ("Minneapolis HQ", "MSP", "headquarters", 350),
-        ("St. Paul GMP Facility", "STP", "manufacturing", 120),
+        ("Minneapolis HQ", "MSP", "headquarters", 700),
+        ("St. Paul GMP Manufacturing", "STP", "manufacturing", 150),
+        ("Wallingford Manufacturing", "WAL", "manufacturing", 120),
+        ("Toronto Diagnostics", "YYZ", "lab", 80),
+        ("Toronto R&D", "YZ2", "lab", 60),
         ("San Jose R&D", "SJC", "lab", 200),
-        ("Denver Operations", "DEN", "warehouse", 50),
     ]
+
+    # Clean up old sites that don't match new structure
+    await db.execute("DELETE FROM sites WHERE tenant_id = $1 AND code NOT IN ('MSP','STP','SJC','WAL','YYZ','YZ2')", tid)
 
     site_ids = {}
     for name, code, stype, emp_count in sites_data:
@@ -617,6 +631,11 @@ async def reseed_demo_data(db):
             "SELECT id FROM sites WHERE tenant_id = $1 AND code = $2", tid, code,
         )
         if existing_site:
+            # Update existing site to match new data
+            await db.execute(
+                "UPDATE sites SET name=$1, site_type=$2, employee_count=$3 WHERE id=$4",
+                name, stype, emp_count, existing_site["id"],
+            )
             site_ids[code] = existing_site["id"]
         else:
             row = await db.fetchrow(
@@ -626,26 +645,26 @@ async def reseed_demo_data(db):
             )
             site_ids[code] = row["id"]
 
-    # Tag all existing incidents/CAPAs/documents to Denver
-    den_id = site_ids["DEN"]
+    # Tag all existing incidents/CAPAs/documents to Minneapolis HQ (primary site)
+    msp_id = site_ids["MSP"]
     await db.execute(
-        "UPDATE incidents SET site_id = $1 WHERE tenant_id = $2 AND site_id IS NULL", den_id, tid,
+        "UPDATE incidents SET site_id = $1 WHERE tenant_id = $2 AND site_id IS NULL", msp_id, tid,
     )
     await db.execute(
-        "UPDATE capas SET site_id = $1 WHERE tenant_id = $2 AND site_id IS NULL", den_id, tid,
+        "UPDATE capas SET site_id = $1 WHERE tenant_id = $2 AND site_id IS NULL", msp_id, tid,
     )
     await db.execute(
-        "UPDATE documents SET site_id = $1 WHERE tenant_id = $2 AND site_id IS NULL", den_id, tid,
+        "UPDATE documents SET site_id = $1 WHERE tenant_id = $2 AND site_id IS NULL", msp_id, tid,
     )
 
     # Add incidents for other sites
     multi_site_incidents = [
-        ("INC-0021", "injury", "medium", "Forklift struck storage rack", "Forklift operator clipped corner of storage rack during turn in warehouse area. Minor rack damage, no injuries.", "Denver - Warehouse", "Anonymous", "open", 8, "DEN"),
-        ("INC-0022", "near_miss", "high", "Pallet fell during unloading", "Pallet shifted and fell from second tier during manual unloading. No personnel in drop zone.", "Denver - Loading Dock", "James Parker", "open", 5, "DEN"),
+        ("INC-0021", "injury", "medium", "Forklift struck storage rack", "Forklift operator clipped corner of storage rack during turn in warehouse area. Minor rack damage, no injuries.", "Wallingford - Warehouse", "Anonymous", "open", 8, "WAL"),
+        ("INC-0022", "near_miss", "high", "Pallet fell during unloading", "Pallet shifted and fell from second tier during manual unloading. No personnel in drop zone.", "Wallingford - Loading Dock", "James Parker", "open", 5, "WAL"),
         ("INC-0023", "hazard", "medium", "Emergency exit partially blocked by equipment", "Quarterly inspection found packaging equipment staged within 3 feet of emergency exit door.", "St. Paul - Packaging Area", "Maria Rodriguez", "open", 2, "STP"),
-        ("INC-0024", "environmental", "low", "Oil stain observed on warehouse floor near drain", "Small oil stain approximately 12 inches diameter observed near floor drain in warehouse.", "Denver - Warehouse", "Anonymous", "closed", 12, "DEN"),
-        ("INC-0025", "near_miss", "low", "Wet floor in breakroom with no sign", "Water from ice machine overflow created wet area in breakroom. No wet floor sign posted.", "Minneapolis - Breakroom", "Sarah Chen", "closed", 20, "MSP"),
-        ("INC-0026", "observation", "low", "First aid kit expired supplies", "Monthly first aid kit check found 4 items past expiration date in 2nd floor kit.", "Minneapolis - 2nd Floor", "Maria Rodriguez", "closed", 15, "MSP"),
+        ("INC-0024", "environmental", "low", "Chemical spill near drain in cartridge manufacturing", "Small solvent spill approximately 12 inches diameter observed near floor drain in manufacturing area.", "Wallingford - Manufacturing", "Anonymous", "closed", 12, "WAL"),
+        ("INC-0025", "near_miss", "low", "Wet floor in breakroom with no sign", "Water from ice machine overflow created wet area in breakroom. No wet floor sign posted.", "Toronto - Breakroom", "Sarah Chen", "closed", 20, "YYZ"),
+        ("INC-0026", "observation", "low", "First aid kit expired supplies", "Monthly first aid kit check found 4 items past expiration date in 2nd floor kit.", "Toronto R&D - 2nd Floor", "Maria Rodriguez", "closed", 15, "YZ2"),
         ("INC-0027", "hazard", "high", "Biosafety cabinet certification expired 2 months", "BSC-2 in Lab A found with certification expired since January 2026. Cabinet has been in active use.", "San Jose - Lab A", "James Parker", "open", 6, "SJC"),
         ("INC-0028", "near_miss", "medium", "Cryogenic liquid splash during transfer", "Liquid nitrogen splashed during dewar transfer when receiving vessel was not pre-cooled.", "San Jose - Lab B", "Anonymous", "open", 3, "SJC"),
     ]
