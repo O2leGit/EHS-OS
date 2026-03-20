@@ -9,6 +9,7 @@ type SpeechRecognitionAny = any;
 
 interface IncidentsPageProps {
   token: string;
+  onOpenChat?: (message: string) => void;
 }
 
 interface Incident {
@@ -119,7 +120,33 @@ const SEVERITY_OPTIONS = [
   { value: "high", label: "High", bg: "bg-red-500/15", border: "border-red-500", ring: "ring-red-500", text: "text-red-400" },
 ];
 
-export default function IncidentsPage({ token }: IncidentsPageProps) {
+function AiPromptBar({ prompts, onOpenChat }: { prompts: string[]; onOpenChat?: (message: string) => void }) {
+  if (!onOpenChat) return null;
+  return (
+    <div className="bg-gradient-to-r from-[#0B1426] to-[#111D35] border border-cyan-500/20 rounded-xl p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z" />
+        </svg>
+        <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">AI Insights</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {prompts.map((prompt) => (
+          <button
+            key={prompt}
+            onClick={() => onOpenChat(prompt)}
+            className="bg-[#111D35] hover:bg-[#1B2A4A] border border-[#1E3050] hover:border-cyan-500/30 rounded-lg px-4 py-3 cursor-pointer transition-all text-left group"
+          >
+            <span className="text-xs text-cyan-400 block mb-0.5">Ask AI</span>
+            <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{prompt}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function IncidentsPage({ token, onOpenChat }: IncidentsPageProps) {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -489,6 +516,16 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
           </button>
         </form>
       )}
+
+      {/* AI Prompt Bar */}
+      <AiPromptBar
+        onOpenChat={onOpenChat}
+        prompts={[
+          "Analyze patterns in my recent incidents",
+          "Which incidents need immediate attention?",
+          "Help me write an incident investigation",
+        ]}
+      />
 
       {/* Incident List */}
       <div className="space-y-3">

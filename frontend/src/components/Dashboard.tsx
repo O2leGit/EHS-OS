@@ -22,6 +22,7 @@ type Page = "dashboard" | "documents" | "incidents" | "capas" | "features" | "ad
 export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
   const [user, setUser] = useState<{ full_name: string; role: string } | null>(null);
 
   useEffect(() => {
@@ -38,22 +39,27 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     onLogout();
   };
 
+  const handleOpenChat = (message: string) => {
+    setChatInitialMessage(message);
+    setChatOpen(true);
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case "dashboard":
-        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} />;
+        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} onOpenChat={handleOpenChat} />;
       case "documents":
-        return <DocumentsPage token={token} />;
+        return <DocumentsPage token={token} onOpenChat={handleOpenChat} />;
       case "incidents":
-        return <IncidentsPage token={token} />;
+        return <IncidentsPage token={token} onOpenChat={handleOpenChat} />;
       case "capas":
-        return <CapaPage token={token} />;
+        return <CapaPage token={token} onOpenChat={handleOpenChat} />;
       case "features":
         return <FeaturesPage />;
       case "admin":
         return <AdminPage token={token} userRole={user?.role || ""} />;
       default:
-        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} />;
+        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} onOpenChat={handleOpenChat} />;
     }
   };
 
@@ -90,6 +96,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           currentPage={currentPage}
           onClose={() => setChatOpen(false)}
           onNavigate={(p) => setCurrentPage(p as Page)}
+          initialMessage={chatInitialMessage}
+          onInitialMessageSent={() => setChatInitialMessage(undefined)}
         />
       )}
     </div>

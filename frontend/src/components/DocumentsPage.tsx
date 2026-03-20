@@ -5,6 +5,7 @@ import { api, uploadFile } from "@/lib/api";
 
 interface DocumentsPageProps {
   token: string;
+  onOpenChat?: (message: string) => void;
 }
 
 interface Document {
@@ -861,10 +862,40 @@ function SOPPreview({ sop, onClose }: { sop: SOPData; onClose: () => void }) {
 }
 
 // =============================================================================
+// AI PROMPT BAR
+// =============================================================================
+
+function AiPromptBar({ prompts, onOpenChat }: { prompts: string[]; onOpenChat?: (message: string) => void }) {
+  if (!onOpenChat) return null;
+  return (
+    <div className="bg-gradient-to-r from-[#0B1426] to-[#111D35] border border-cyan-500/20 rounded-xl p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z" />
+        </svg>
+        <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">AI Insights</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {prompts.map((prompt) => (
+          <button
+            key={prompt}
+            onClick={() => onOpenChat(prompt)}
+            className="bg-[#111D35] hover:bg-[#1B2A4A] border border-[#1E3050] hover:border-cyan-500/30 rounded-lg px-4 py-3 cursor-pointer transition-all text-left group"
+          >
+            <span className="text-xs text-cyan-400 block mb-0.5">Ask AI</span>
+            <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{prompt}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 
-export default function DocumentsPage({ token }: DocumentsPageProps) {
+export default function DocumentsPage({ token, onOpenChat }: DocumentsPageProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadStage, setUploadStage] = useState<UploadStage>(null);
@@ -1144,6 +1175,16 @@ export default function DocumentsPage({ token }: DocumentsPageProps) {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Documents</h1>
+
+      {/* AI Prompt Bar */}
+      <AiPromptBar
+        onOpenChat={onOpenChat}
+        prompts={[
+          "What gaps does my documentation have?",
+          "Help me write an SOP",
+          "What documents do I need for OSHA compliance?",
+        ]}
+      />
 
       {/* Upload zone */}
       <div

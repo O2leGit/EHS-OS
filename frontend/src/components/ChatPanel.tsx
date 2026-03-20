@@ -8,6 +8,8 @@ interface ChatPanelProps {
   currentPage: string;
   onClose: () => void;
   onNavigate?: (page: string) => void;
+  initialMessage?: string;
+  onInitialMessageSent?: () => void;
 }
 
 interface Message {
@@ -257,7 +259,7 @@ function RegulationCard({
   );
 }
 
-export default function ChatPanel({ token, currentPage, onClose, onNavigate }: ChatPanelProps) {
+export default function ChatPanel({ token, currentPage, onClose, onNavigate, initialMessage, onInitialMessageSent }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -278,6 +280,16 @@ export default function ChatPanel({ token, currentPage, onClose, onNavigate }: C
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Auto-send initial message from AI prompt bar
+  const initialMessageSentRef = useRef(false);
+  useEffect(() => {
+    if (initialMessage && !initialMessageSentRef.current && !loading) {
+      initialMessageSentRef.current = true;
+      sendMessage(initialMessage);
+      if (onInitialMessageSent) onInitialMessageSent();
+    }
+  }, [initialMessage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
