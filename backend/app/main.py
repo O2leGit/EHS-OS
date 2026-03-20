@@ -52,8 +52,11 @@ async def public_analysis(response: Response):
     """Public endpoint for Claude Chat / external AI analysis.
     Returns a comprehensive overview of the Helix BioWorks demo tenant
     without requiring authentication."""
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    import time
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    response.headers["ETag"] = f'"{int(time.time())}"'
     from app.core.database import get_pool
     pool = await get_pool()
     async with pool.acquire() as db:
@@ -102,6 +105,44 @@ async def public_analysis(response: Response):
         users = await db.fetch(
             "SELECT full_name, email, role FROM users WHERE tenant_id=$1", tid)
 
+        # Audit Readiness Score (inline calc, mirrors /api/audit/readiness)
+        cov_rows = await db.fetch(
+            "SELECT coverage_status, COUNT(*) as cnt FROM document_analyses WHERE tenant_id=$1 GROUP BY coverage_status", tid)
+        cov_total = sum(r["cnt"] for r in cov_rows)
+        cov_covered = sum(r["cnt"] for r in cov_rows if r["coverage_status"] == "covered")
+        cov_partial = sum(r["cnt"] for r in cov_rows if r["coverage_status"] == "partial")
+        coverage_score = int(((cov_covered + cov_partial * 0.5) / max(cov_total, 1)) * 100)
+
+        overdue_c = await db.fetchval(
+            "SELECT COUNT(*) FROM capas WHERE tenant_id=$1 AND status != 'closed' AND due_date < CURRENT_DATE", tid)
+        open_c = await db.fetchval(
+            "SELECT COUNT(*) FROM capas WHERE tenant_id=$1 AND status IN ('open','in_progress')", tid)
+        total_c = await db.fetchval("SELECT COUNT(*) FROM capas WHERE tenant_id=$1", tid)
+        capa_score = int(max(0, 100 - (overdue_c * 20) - (open_c * 5)))
+
+        total_inc = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1", tid)
+        closed_inc = await db.fetchval(
+            "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND status='closed'", tid)
+        investigation_score = int((closed_inc / max(total_inc, 1)) * 100)
+
+        near_misses = await db.fetchval(
+            "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND incident_type='near_miss'", tid)
+        injuries = await db.fetchval(
+            "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND incident_type='injury'", tid)
+        nm_ratio = near_misses / max(injuries, 1)
+        nm_score = min(100, int((nm_ratio / 10) * 100))
+
+        recent_docs = await db.fetchval(
+            "SELECT COUNT(*) FROM documents WHERE tenant_id=$1 AND created_at > NOW() - INTERVAL '90 days'", tid)
+        total_docs_count = await db.fetchval("SELECT COUNT(*) FROM documents WHERE tenant_id=$1", tid)
+        doc_score = min(100, int((recent_docs / max(total_docs_count, 1)) * 100 + (30 if total_docs_count > 0 else 0)))
+
+        audit_overall = int(
+            coverage_score * 0.30 + capa_score * 0.25 + investigation_score * 0.20
+            + nm_score * 0.15 + doc_score * 0.10
+        )
+        audit_level = "audit_ready" if audit_overall >= 80 else "needs_attention" if audit_overall >= 60 else "at_risk" if audit_overall >= 40 else "critical_gaps"
+
         import json
         def serialize(rows):
             result = []
@@ -123,10 +164,12 @@ async def public_analysis(response: Response):
         coverage_pct = round((covered_count / total_count) * 100) if total_count else 0
 
         from datetime import datetime, timezone
+        import uuid
         return {
-            "data_version": "2.0-polished",
+            "data_version": "3.0-audit-enriched",
+            "request_id": str(uuid.uuid4()),
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "note": "This data reflects DEMO_POLISH.md fixes: 20 incidents, 9 CAPAs across 3 assignees, 5 analyzed documents, enriched AI reasoning, 2 overdue CAPAs, 6-month incident spread, pattern detection ready",
+            "note": "v3.0: 20 incidents, 9 CAPAs, 5 documents, audit readiness score, enriched AI reasoning, 2 overdue CAPAs, 6-month incident spread, pattern detection ready",
             "platform": "EHS Operating System (EHS-OS)",
             "description": "AI-native Environmental Health & Safety platform for life sciences companies",
             "demo_tenant": tenant["name"],
@@ -174,6 +217,17 @@ async def public_analysis(response: Response):
                     "3": "Standards -- 100 (Management), 200 (Risk Topics), 300 (Programs), 400 (Resilience)",
                     "4": "Implementation -- SOPs, checklists, forms",
                 },
+            },
+            "audit_readiness": {
+                "overall_score": audit_overall,
+                "level": audit_level,
+                "factors": [
+                    {"name": "Framework Coverage", "weight": 30, "score": coverage_score, "detail": f"{cov_covered}/{cov_total} standards fully covered"},
+                    {"name": "CAPA Health", "weight": 25, "score": capa_score, "detail": f"{overdue_c} overdue, {open_c} open of {total_c} total"},
+                    {"name": "Incident Investigation", "weight": 20, "score": investigation_score, "detail": f"{closed_inc}/{total_inc} investigations closed"},
+                    {"name": "Near-Miss Ratio", "weight": 15, "score": nm_score, "detail": f"{near_misses}:{max(injuries, 1)} near-miss to injury ratio"},
+                    {"name": "Document Freshness", "weight": 10, "score": doc_score, "detail": f"{recent_docs} documents uploaded in last 90 days"},
+                ],
             },
             "incidents": serialize(incidents),
             "capas": serialize(capas),
