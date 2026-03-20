@@ -303,7 +303,7 @@ async def generate_report(req: ReportRequest, db=Depends(get_db), user: dict = D
     report = await db.fetchrow(
         """INSERT INTO reports (tenant_id, report_type, period_label, title, content, created_by)
            VALUES ($1::uuid, $2, $3, $4, $5::jsonb, $6::uuid) RETURNING id, created_at""",
-        tid, req.report_type, period_label, title, json.dumps(report_content), user["id"]
+        tid, req.report_type, period_label, title, json.dumps(report_content), user["sub"]
     )
 
     return {
