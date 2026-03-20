@@ -49,6 +49,14 @@ async def health():
     return {"status": "ok", "version": "0.1.0"}
 
 
+@app.get("/api/public/fresh")
+async def public_fresh_redirect():
+    """Redirects to a cache-busted analysis URL. Give Claude Chat this link."""
+    import time
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"/api/public/analysis/t{int(time.time())}", status_code=307)
+
+
 @app.get("/api/public/analysis")
 @app.get("/api/public/analysis/{cache_bust}")
 async def public_analysis(response: Response, cache_bust: str = ""):
