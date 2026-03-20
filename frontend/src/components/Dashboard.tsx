@@ -24,6 +24,13 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
   const [user, setUser] = useState<{ full_name: string; role: string } | null>(null);
+  const [toasts, setToasts] = useState<{id: number; message: string; type: 'success' | 'error'}[]>([]);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, {id, message, type}]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  };
 
   useEffect(() => {
     api<{ full_name: string; role: string }>("/api/auth/me", { token })
@@ -49,9 +56,9 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       case "dashboard":
         return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} onOpenChat={handleOpenChat} />;
       case "documents":
-        return <DocumentsPage token={token} onOpenChat={handleOpenChat} />;
+        return <DocumentsPage token={token} onOpenChat={handleOpenChat} showToast={showToast} />;
       case "incidents":
-        return <IncidentsPage token={token} onOpenChat={handleOpenChat} />;
+        return <IncidentsPage token={token} onOpenChat={handleOpenChat} showToast={showToast} />;
       case "capas":
         return <CapaPage token={token} onOpenChat={handleOpenChat} />;
       case "features":
@@ -100,6 +107,45 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           onInitialMessageSent={() => setChatInitialMessage(undefined)}
         />
       )}
+
+      {/* Toast notifications */}
+      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
+        {toasts.map(toast => (
+          <div
+            key={toast.id}
+            className={`pointer-events-auto px-4 py-3 rounded-lg shadow-lg text-sm font-medium border transition-all animate-slide-in-right ${
+              toast.type === 'success'
+                ? 'bg-green-900/90 text-green-200 border-green-700'
+                : 'bg-red-900/90 text-red-200 border-red-700'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {toast.type === 'success' ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-green-400 shrink-0">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-red-400 shrink-0">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+              )}
+              {toast.message}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in-right {
+          animation: slideInRight 0.2s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

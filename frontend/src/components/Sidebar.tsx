@@ -104,6 +104,9 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, userName, u
         {expanded && userName && (
           <p className="text-xs text-gray-500 mt-1 truncate">{userName}</p>
         )}
+        {expanded && (
+          <p className="text-xs text-gray-600 mt-2 text-center">Powered by EHS-OS</p>
+        )}
       </div>
     </div>
   );

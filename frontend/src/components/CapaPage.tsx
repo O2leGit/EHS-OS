@@ -126,6 +126,7 @@ function AiPromptBar({ prompts, onOpenChat }: { prompts: string[]; onOpenChat?: 
 
 export default function CapaPage({ token, onOpenChat }: CapaPageProps) {
   const [capas, setCapas] = useState<Capa[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedCapa, setSelectedCapa] = useState<Capa | null>(null);
@@ -138,7 +139,7 @@ export default function CapaPage({ token, onOpenChat }: CapaPageProps) {
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const fetchCapas = useCallback(() => {
-    api<Capa[]>("/api/capa/", { token }).then(setCapas).catch(console.error);
+    api<Capa[]>("/api/capa/", { token }).then(setCapas).catch(console.error).finally(() => setLoading(false));
   }, [token]);
 
   useEffect(() => {
@@ -481,8 +482,33 @@ export default function CapaPage({ token, onOpenChat }: CapaPageProps) {
         )}
       </div>
 
+      {/* Loading skeleton */}
+      {loading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
+          {[1,2,3,4].map(col => (
+            <div key={col}>
+              <div className="border-t-2 border-navy-600 mb-3 pt-2">
+                <div className="h-4 bg-navy-700 rounded w-24" />
+              </div>
+              <div className="space-y-2">
+                {[1,2].map(card => (
+                  <div key={card} className="bg-navy-800 rounded-xl p-4 border border-navy-700">
+                    <div className="flex justify-between mb-2">
+                      <div className="h-3 bg-navy-700 rounded w-16" />
+                      <div className="h-3 bg-navy-700 rounded w-12" />
+                    </div>
+                    <div className="h-4 bg-navy-700 rounded w-full mb-2" />
+                    <div className="h-3 bg-navy-700 rounded w-24" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Board View */}
-      {viewMode === "board" && (
+      {!loading && viewMode === "board" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {statusColumns.map((col) => (
             <div
@@ -509,7 +535,7 @@ export default function CapaPage({ token, onOpenChat }: CapaPageProps) {
       )}
 
       {/* List View */}
-      {viewMode === "list" && (
+      {!loading && viewMode === "list" && (
         <div className="border border-gray-700/50 rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead>

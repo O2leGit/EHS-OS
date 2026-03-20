@@ -13,7 +13,7 @@
     @apply bg-navy-800 rounded-xl border border-navy-700 p-6;
   }
   .card-hover {
-    @apply card hover:border-navy-600 transition-colors cursor-pointer;
+    @apply card hover:border-navy-600 transition-all duration-150 cursor-pointer;
   }
   .btn-primary {
     @apply bg-safe hover:bg-green-600 text-white font-medium px-4 py-2 rounded-lg transition-colors;

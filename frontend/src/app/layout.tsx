@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EHS-OS | EHS Operating System",
+  title: "EHS-OS | Environmental Health & Safety",
   description: "AI-native Environmental Health & Safety Operating System",
 };
 

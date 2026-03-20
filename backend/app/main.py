@@ -127,7 +127,6 @@ async def public_analysis():
             "live_urls": {
                 "frontend": "https://ehs-os.netlify.app",
                 "backend_api": "https://ehs-os-backend-production.up.railway.app",
-                "github": "https://github.com/O2leGit/EHS-OS",
             },
             "demo_credentials": {
                 "admin": {"email": "admin@helixbioworks.com", "password": "demo123", "name": "Sarah Chen"},

@@ -6,6 +6,7 @@ import { api, uploadFile } from "@/lib/api";
 interface DocumentsPageProps {
   token: string;
   onOpenChat?: (message: string) => void;
+  showToast?: (message: string, type?: 'success' | 'error') => void;
 }
 
 interface Document {
@@ -895,7 +896,7 @@ function AiPromptBar({ prompts, onOpenChat }: { prompts: string[]; onOpenChat?: 
 // MAIN COMPONENT
 // =============================================================================
 
-export default function DocumentsPage({ token, onOpenChat }: DocumentsPageProps) {
+export default function DocumentsPage({ token, onOpenChat, showToast }: DocumentsPageProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadStage, setUploadStage] = useState<UploadStage>(null);
@@ -1042,6 +1043,7 @@ export default function DocumentsPage({ token, onOpenChat }: DocumentsPageProps)
             // Stage 4: Complete
             if (analyzeTimerRef.current) clearTimeout(analyzeTimerRef.current);
             setUploadStage("complete");
+            showToast?.("Document analyzed successfully", "success");
 
             // Refresh coverage data
             fetchCoverage();
@@ -1071,7 +1073,7 @@ export default function DocumentsPage({ token, onOpenChat }: DocumentsPageProps)
     } catch (err) {
       setUploadStage(null);
       setUploading(false);
-      // Show error via a simple alert fallback
+      showToast?.("Upload failed. Please try again.", "error");
       console.error("Upload failed:", err);
     }
   };
@@ -1390,9 +1392,16 @@ export default function DocumentsPage({ token, onOpenChat }: DocumentsPageProps)
           </div>
         ))}
         {documents.length === 0 && (
-          <p className="text-gray-500 text-center py-8">
-            No documents uploaded yet. Drop a file above to get started.
-          </p>
+          <div className="text-center py-12 bg-navy-800 rounded-xl border border-navy-700">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-gray-600 mx-auto mb-4">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="15" y2="15" />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-400 mb-2">No documents uploaded yet</h3>
+            <p className="text-gray-500 text-sm mb-4">Upload your first EHS document to get an AI-powered gap analysis</p>
+          </div>
         )}
       </div>
 

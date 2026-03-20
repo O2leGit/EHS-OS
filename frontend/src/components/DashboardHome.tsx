@@ -235,7 +235,25 @@ export default function DashboardHome({ token, onNavigate, onOpenChat }: Dashboa
   }, [token]);
 
   if (loading) {
-    return <div className="text-gray-400">Loading dashboard...</div>;
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-navy-700 rounded w-40 mb-6" />
+        {/* KPI card skeletons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="bg-navy-800 rounded-xl p-5 border border-navy-700">
+              <div className="h-3 bg-navy-700 rounded w-24 mb-3" />
+              <div className="h-8 bg-navy-700 rounded w-16" />
+            </div>
+          ))}
+        </div>
+        {/* Chart skeletons */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-navy-800 rounded-xl p-5 border border-navy-700 h-64" />
+          <div className="bg-navy-800 rounded-xl p-5 border border-navy-700 h-64" />
+        </div>
+      </div>
+    );
   }
 
   // CAPA closure rate

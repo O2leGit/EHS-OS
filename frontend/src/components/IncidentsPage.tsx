@@ -10,6 +10,7 @@ type SpeechRecognitionAny = any;
 interface IncidentsPageProps {
   token: string;
   onOpenChat?: (message: string) => void;
+  showToast?: (message: string, type?: 'success' | 'error') => void;
 }
 
 interface Incident {
@@ -146,7 +147,7 @@ function AiPromptBar({ prompts, onOpenChat }: { prompts: string[]; onOpenChat?: 
   );
 }
 
-export default function IncidentsPage({ token, onOpenChat }: IncidentsPageProps) {
+export default function IncidentsPage({ token, onOpenChat, showToast }: IncidentsPageProps) {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -190,10 +191,12 @@ export default function IncidentsPage({ token, onOpenChat }: IncidentsPageProps)
         token,
       });
       setSubmitSuccess(result?.incident_number || "INC-???");
+      showToast?.(`Incident ${result?.incident_number || ''} reported successfully`, 'success');
       fetchIncidents();
     } catch (err) {
       console.error(err);
       setSubmitError("Failed to submit incident. Please try again.");
+      showToast?.("Failed to submit incident", 'error');
     } finally {
       setSubmitting(false);
     }
@@ -552,16 +555,38 @@ export default function IncidentsPage({ token, onOpenChat }: IncidentsPageProps)
           </div>
         ))}
         {loading && incidents.length === 0 && (
-          <div className="text-center py-8">
-            <svg className="animate-spin w-6 h-6 text-gray-400 mx-auto mb-2" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            <p className="text-gray-500">Loading incidents...</p>
+          <div className="space-y-3 animate-pulse">
+            {[1,2,3].map(i => (
+              <div key={i} className="bg-navy-800 rounded-xl p-5 border border-navy-700 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-3 bg-navy-700 rounded w-20" />
+                      <div className="h-4 bg-navy-700 rounded w-16" />
+                    </div>
+                    <div className="h-4 bg-navy-700 rounded w-48 mb-1" />
+                    <div className="h-3 bg-navy-700 rounded w-32" />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="h-3 bg-navy-700 rounded w-12 mb-2 ml-auto" />
+                  <div className="h-3 bg-navy-700 rounded w-16 ml-auto" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
         {!loading && incidents.length === 0 && (
-          <p className="text-gray-500 text-center py-8">No incidents reported yet.</p>
+          <div className="text-center py-12 bg-navy-800 rounded-xl border border-navy-700">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-gray-600 mx-auto mb-4">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-400 mb-2">No incidents reported yet</h3>
+            <p className="text-gray-500 text-sm mb-4">Start by reporting your first incident or use the photo analysis feature</p>
+            <button onClick={() => setShowForm(true)} className="btn-primary">Report an Incident</button>
+          </div>
         )}
       </div>
     </div>
