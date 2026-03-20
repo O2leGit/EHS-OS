@@ -107,7 +107,7 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, userName, u
         {navItems.filter((item) => !item.adminOnly || userRole === "admin").map((item) => (
           <button
             key={item.id}
-            onClick={() => onNavigate(item.id)}
+            onClick={() => { onNavigate(item.id); if (isMobile) setExpanded(false); }}
             className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${
               currentPage === item.id
                 ? "bg-navy-800 text-safe border-r-2 border-safe"
