@@ -11,7 +11,7 @@ async def gap_analysis(db=Depends(get_db), current_user: dict = Depends(get_curr
 
     rows = await db.fetch(
         """SELECT framework_tier, framework_category, framework_series,
-                  coverage_status, gap_text, risk_severity, ai_reasoning
+                  coverage_status, gaps, risk_severity, ai_reasoning
            FROM document_analyses WHERE tenant_id = $1::uuid
            ORDER BY framework_tier, framework_category, framework_series""",
         tid,
@@ -45,14 +45,18 @@ async def gap_analysis(db=Depends(get_db), current_user: dict = Depends(get_curr
                 "ai_reasoning": r["ai_reasoning"],
             }
 
-        if status != "covered" and r["gap_text"]:
-            gap_entry = {
-                "category": category,
-                "gap_description": r["gap_text"],
-                "risk_severity": r["risk_severity"],
-                "recommendation": r["ai_reasoning"],
-            }
-            tiers_map[tier][category]["gaps"].append(r["gap_text"])
+        # gaps is stored as JSONB (a JSON array of strings)
+        import json as _json
+        gap_list = r["gaps"] if isinstance(r["gaps"], list) else _json.loads(r["gaps"]) if r["gaps"] else []
+        if status != "covered" and gap_list:
+            for gap_text in gap_list:
+                gap_entry = {
+                    "category": category,
+                    "gap_description": gap_text,
+                    "risk_severity": r["risk_severity"],
+                    "recommendation": r["ai_reasoning"],
+                }
+                tiers_map[tier][category]["gaps"].append(gap_text)
             all_gaps.append(gap_entry)
 
     overall_score = round((covered_count / total_count) * 100) if total_count > 0 else 0
@@ -84,7 +88,7 @@ async def gap_analysis_detail(category: str, db=Depends(get_db), current_user: d
 
     rows = await db.fetch(
         """SELECT id, framework_tier, framework_category, framework_series,
-                  coverage_status, gap_text, ai_reasoning, chunk_text, risk_severity,
+                  coverage_status, gaps, ai_reasoning, chunk_text, risk_severity,
                   created_at
            FROM document_analyses
            WHERE tenant_id = $1::uuid AND framework_category = $2

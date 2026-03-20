@@ -34,9 +34,10 @@ async def get_weekly_briefing(db=Depends(get_db), current_user: dict = Depends(g
         tid,
     )
 
-    # Filter recent 14 days
-    cutoff_14d = datetime.utcnow() - timedelta(days=14)
-    recent_14d = [i for i in incidents_90d if i["created_at"] >= cutoff_14d]
+    # Filter recent 14 days (use timezone-aware comparison)
+    from datetime import timezone
+    cutoff_14d = datetime.now(timezone.utc) - timedelta(days=14)
+    recent_14d = [i for i in incidents_90d if i["created_at"] and i["created_at"] >= cutoff_14d]
 
     # Get current metrics
     incidents_mtd = await db.fetchval(
@@ -78,7 +79,8 @@ async def get_weekly_briefing(db=Depends(get_db), current_user: dict = Depends(g
     priorities = []
 
     # If we have enough data and an API key, call Claude for analysis
-    if len(incidents_90d) >= 5 and settings.claude_api_key:
+    api_key = settings.anthropic_api_key or settings.claude_api_key
+    if len(incidents_90d) >= 5 and api_key:
         incident_data = [
             {
                 "type": str(i["incident_type"]),
@@ -93,7 +95,7 @@ async def get_weekly_briefing(db=Depends(get_db), current_user: dict = Depends(g
         try:
             from anthropic import AsyncAnthropic
 
-            client = AsyncAnthropic(api_key=settings.claude_api_key)
+            client = AsyncAnthropic(api_key=api_key)
             message = await client.messages.create(
                 model="claude-sonnet-4-20250514",
                 max_tokens=1500,

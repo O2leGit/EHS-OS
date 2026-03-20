@@ -8,7 +8,7 @@ client = None
 def get_client() -> AsyncAnthropic:
     global client
     if client is None:
-        client = AsyncAnthropic(api_key=settings.claude_api_key)
+        client = AsyncAnthropic(api_key=settings.anthropic_api_key or settings.claude_api_key)
     return client
 
 

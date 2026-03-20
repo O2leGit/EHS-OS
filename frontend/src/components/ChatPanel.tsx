@@ -11,6 +11,7 @@ interface ChatPanelProps {
 }
 
 interface Message {
+  id?: string;
   role: string;
   content: string;
   created_at?: string;
@@ -270,7 +271,7 @@ export default function ChatPanel({ token, currentPage, onClose, onNavigate }: C
   useEffect(() => {
     fetchHistory();
     api<{ prompts: string[] }>(`/api/chat/suggested-prompts?page=${currentPage}`, { token })
-      .then((res) => setPrompts(res.prompts))
+      .then((res) => setPrompts(res?.prompts || []))
       .catch(console.error);
   }, [token, currentPage, fetchHistory]);
 
@@ -339,7 +340,7 @@ export default function ChatPanel({ token, currentPage, onClose, onNavigate }: C
   };
 
   return (
-    <div className="fixed right-0 top-0 h-full w-[380px] bg-navy-900 border-l border-navy-700 flex flex-col z-40">
+    <div className="fixed right-0 top-0 h-full w-full sm:w-[380px] bg-navy-900 border-l border-navy-700 flex flex-col z-40">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-navy-700">
         <div className="flex items-center gap-2">
@@ -371,7 +372,7 @@ export default function ChatPanel({ token, currentPage, onClose, onNavigate }: C
         )}
         {messages.map((msg, i) => (
           <div
-            key={i}
+            key={msg.id || `msg-${i}`}
             className={`text-sm ${
               msg.role === "user"
                 ? "bg-safe/10 border border-green-900 rounded-lg p-3 ml-8"

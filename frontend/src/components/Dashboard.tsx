@@ -58,7 +58,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     <div className="flex h-screen overflow-hidden">
       <Sidebar
         currentPage={currentPage}
-        onNavigate={setCurrentPage}
+        onNavigate={(p) => setCurrentPage(p as Page)}
         onLogout={handleLogout}
         userName={user?.full_name || ""}
         userRole={user?.role || ""}

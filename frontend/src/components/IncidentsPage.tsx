@@ -129,7 +129,9 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
     description: "",
     location: "",
   });
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [anonymous, setAnonymous] = useState(true);
   const [listening, setListening] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -143,7 +145,7 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
   const recognitionRef = useRef<SpeechRecognitionAny>(null);
 
   const fetchIncidents = useCallback(() => {
-    api<Incident[]>("/api/incidents/", { token }).then(setIncidents).catch(console.error);
+    api<Incident[]>("/api/incidents/", { token }).then(setIncidents).catch(console.error).finally(() => setLoading(false));
   }, [token]);
 
   useEffect(() => {
@@ -153,6 +155,7 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const result = await api<Incident>("/api/incidents/", {
         method: "POST",
@@ -163,6 +166,7 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
       fetchIncidents();
     } catch (err) {
       console.error(err);
+      setSubmitError("Failed to submit incident. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -470,6 +474,12 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
             <p className="text-xs text-gray-600 mt-1">(Voice input supported in Chrome/Edge)</p>
           </div>
 
+          {submitError && (
+            <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              {submitError}
+            </div>
+          )}
+
           <button
             type="submit"
             className="btn-primary w-full min-h-[48px] text-base font-bold"
@@ -489,7 +499,7 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-mono text-gray-500">{inc.incident_number}</span>
                   <span className={typeColors[inc.incident_type] || "badge-info"}>
-                    {inc.incident_type.replace("_", " ")}
+                    {(inc.incident_type || "").replace("_", " ")}
                   </span>
                 </div>
                 <p className="font-medium">{inc.title}</p>
@@ -498,13 +508,22 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
             </div>
             <div className="text-right">
               <span className={`text-sm font-medium ${severityColors[inc.severity] || ""}`}>
-                {inc.severity.toUpperCase()}
+                {(inc.severity || "").toUpperCase()}
               </span>
               <p className="text-sm text-gray-500 mt-1">{inc.status}</p>
             </div>
           </div>
         ))}
-        {incidents.length === 0 && (
+        {loading && incidents.length === 0 && (
+          <div className="text-center py-8">
+            <svg className="animate-spin w-6 h-6 text-gray-400 mx-auto mb-2" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <p className="text-gray-500">Loading incidents...</p>
+          </div>
+        )}
+        {!loading && incidents.length === 0 && (
           <p className="text-gray-500 text-center py-8">No incidents reported yet.</p>
         )}
       </div>

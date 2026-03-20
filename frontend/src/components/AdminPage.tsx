@@ -40,6 +40,7 @@ export default function AdminPage({ token, userRole }: AdminPageProps) {
   const [userForm, setUserForm] = useState({ email: "", full_name: "", password: "", role: "user" });
 
   const [submitting, setSubmitting] = useState(false);
+  const [qrError, setQrError] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const showToast = (message: string, type: "success" | "error") => {
@@ -66,10 +67,18 @@ export default function AdminPage({ token, userRole }: AdminPageProps) {
         if (slug) {
           api<QrCodeData>(`/api/admin/qr-codes/${slug}`, { token })
             .then(setQrData)
-            .catch((err) => console.error("Failed to fetch QR data:", err));
+            .catch((err) => {
+              console.error("Failed to fetch QR data:", err);
+              setQrError(true);
+            });
+        } else {
+          setQrError(true);
         }
       })
-      .catch((err) => console.error("Failed to fetch user info:", err));
+      .catch((err) => {
+        console.error("Failed to fetch user info:", err);
+        setQrError(true);
+      });
   }, [token]);
 
   useEffect(() => {
@@ -332,8 +341,12 @@ export default function AdminPage({ token, userRole }: AdminPageProps) {
               </code>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(qrData.url);
-                  showToast("URL copied to clipboard", "success");
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(qrData.url);
+                    showToast("URL copied!", "success");
+                  } else {
+                    showToast("Copy not available", "error");
+                  }
                 }}
                 className="btn-primary flex-shrink-0"
               >
@@ -346,6 +359,10 @@ export default function AdminPage({ token, userRole }: AdminPageProps) {
             <p className="text-xs text-gray-500 mt-3">
               Scan this QR code with any smartphone camera to open the incident reporting form.
             </p>
+          </div>
+        ) : qrError ? (
+          <div className="bg-navy-800 rounded-lg border border-red-500/30 p-6 text-center text-red-400">
+            Could not load QR code data
           </div>
         ) : (
           <div className="bg-navy-800 rounded-lg border border-navy-700 p-6 text-center text-gray-500">

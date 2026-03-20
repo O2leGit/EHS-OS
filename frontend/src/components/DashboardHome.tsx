@@ -284,7 +284,7 @@ export default function DashboardHome({ token, onNavigate }: DashboardHomeProps)
         : "bg-red-900 border-red-700 text-red-200";
     return (
       <div
-        key={idx}
+        key={`${item.framework_tier}-${item.framework_series}-${item.framework_category}`}
         title={`${item.framework_category} — ${status} (${item.chunk_count} doc${item.chunk_count !== 1 ? "s" : ""})`}
         className={`border rounded px-2 py-1 text-xs cursor-pointer hover:brightness-125 transition-all ${color}`}
         onClick={() => setSelectedCell(item)}
@@ -362,39 +362,45 @@ export default function DashboardHome({ token, onNavigate }: DashboardHomeProps)
           onClick={() => setShowAuditModal(true)}
           className="card-hover bg-gray-900/40 border border-gray-700 cursor-pointer hover:ring-2 hover:ring-cyan-500/50 transition-all flex flex-col items-center justify-center py-3"
         >
-          <svg width="100" height="100" viewBox="0 0 100 100" className="mb-1">
-            {/* Background track */}
-            <circle
-              cx="50" cy="50" r={gaugeRadius}
-              fill="none"
-              stroke="#374151"
-              strokeWidth="8"
-              strokeLinecap="round"
-              transform="rotate(-90 50 50)"
-              strokeDasharray={gaugeCircumference}
-            />
-            {/* Foreground arc */}
-            <circle
-              cx="50" cy="50" r={gaugeRadius}
-              fill="none"
-              stroke={auditGaugeColor}
-              strokeWidth="8"
-              strokeLinecap="round"
-              transform="rotate(-90 50 50)"
-              strokeDasharray={gaugeCircumference}
-              strokeDashoffset={gaugeDashoffset}
-              style={{ transition: "stroke-dashoffset 0.8s ease" }}
-            />
-            {/* Score text */}
-            <text x="50" y="46" textAnchor="middle" fill="white" fontSize="22" fontWeight="bold" dominantBaseline="middle">
-              {auditScore}
-            </text>
-            <text x="50" y="62" textAnchor="middle" fill="#9ca3af" fontSize="8">
-              / 100
-            </text>
-          </svg>
-          <p className="text-sm text-gray-400">Audit Readiness</p>
-          <p className={`text-xs font-semibold ${auditLevelTextColor}`}>{auditLevel}</p>
+          {auditReadiness ? (
+            <>
+              <svg width="100" height="100" viewBox="0 0 100 100" className="mb-1">
+                {/* Background track */}
+                <circle
+                  cx="50" cy="50" r={gaugeRadius}
+                  fill="none"
+                  stroke="#374151"
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  transform="rotate(-90 50 50)"
+                  strokeDasharray={gaugeCircumference}
+                />
+                {/* Foreground arc */}
+                <circle
+                  cx="50" cy="50" r={gaugeRadius}
+                  fill="none"
+                  stroke={auditGaugeColor}
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  transform="rotate(-90 50 50)"
+                  strokeDasharray={gaugeCircumference}
+                  strokeDashoffset={gaugeDashoffset}
+                  style={{ transition: "stroke-dashoffset 0.8s ease" }}
+                />
+                {/* Score text */}
+                <text x="50" y="46" textAnchor="middle" fill="white" fontSize="22" fontWeight="bold" dominantBaseline="middle">
+                  {auditScore}
+                </text>
+                <text x="50" y="62" textAnchor="middle" fill="#9ca3af" fontSize="8">
+                  / 100
+                </text>
+              </svg>
+              <p className="text-sm text-gray-400">Audit Readiness</p>
+              <p className={`text-xs font-semibold ${auditLevelTextColor}`}>{auditLevel}</p>
+            </>
+          ) : (
+            <div className="text-center text-gray-500">Loading...</div>
+          )}
         </div>
       </div>
 
@@ -541,7 +547,7 @@ export default function DashboardHome({ token, onNavigate }: DashboardHomeProps)
               <ul className="space-y-1">
                 {recentActivity.slice(0, 10).map((item, idx) => (
                   <li
-                    key={idx}
+                    key={item.reference || idx}
                     className={`flex items-start gap-3 px-3 py-2 rounded border-l-2 ${
                       item.type === "incident"
                         ? "border-l-cyan-500 bg-gray-800/50"
@@ -751,7 +757,7 @@ export default function DashboardHome({ token, onNavigate }: DashboardHomeProps)
                       : "bg-red-900 text-red-200"
                   }`}
                 >
-                  {selectedCell.coverage_status?.charAt(0).toUpperCase() + selectedCell.coverage_status?.slice(1)}
+                  {(selectedCell.coverage_status || "unknown").charAt(0).toUpperCase() + (selectedCell.coverage_status || "unknown").slice(1)}
                 </span>
               </div>
 

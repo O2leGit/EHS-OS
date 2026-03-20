@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface SidebarProps {
   currentPage: string;
-  onNavigate: (page: any) => void;
+  onNavigate: (page: string) => void;
   onLogout: () => void;
   userName: string;
   userRole?: string;
 }
 
-const navItems = [
+interface NavItem {
+  id: string;
+  label: string;
+  icon: string;
+  adminOnly?: boolean;
+}
+
+const navItems: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
   { id: "documents", label: "Documents", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
   { id: "incidents", label: "Incidents", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" },
@@ -20,26 +27,52 @@ const navItems = [
 
 export default function Sidebar({ currentPage, onNavigate, onLogout, userName, userRole }: SidebarProps) {
   const [expanded, setExpanded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const handleToggle = () => {
+    if (isMobile) setExpanded((prev) => !prev);
+  };
 
   return (
     <div
       className={`bg-navy-900 border-r border-navy-700 flex flex-col transition-all duration-200 ${
         expanded ? "w-60" : "w-14"
       }`}
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
+      onMouseEnter={() => { if (!isMobile) setExpanded(true); }}
+      onMouseLeave={() => { if (!isMobile) setExpanded(false); }}
+      onClick={handleToggle}
     >
       <div className="p-3 border-b border-navy-700">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-safe rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-            E
-          </div>
+          {isMobile && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setExpanded((prev) => !prev); }}
+              className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white transition-colors flex-shrink-0"
+              aria-label="Toggle menu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          )}
+          {!isMobile && (
+            <div className="w-8 h-8 bg-safe rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+              E
+            </div>
+          )}
           {expanded && <span className="text-safe font-bold text-sm">EHS-OS</span>}
         </div>
       </div>
 
       <nav className="flex-1 py-2">
-        {navItems.filter((item) => !(item as any).adminOnly || userRole === "admin").map((item) => (
+        {navItems.filter((item) => !item.adminOnly || userRole === "admin").map((item) => (
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
