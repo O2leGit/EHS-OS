@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { api } from "@/lib/api";
+import { api, uploadFile } from "@/lib/api";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type SpeechRecognitionAny = any;
@@ -133,6 +133,13 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
   const [anonymous, setAnonymous] = useState(true);
   const [listening, setListening] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [photoAnalyzing, setPhotoAnalyzing] = useState(false);
+  const [photoResult, setPhotoResult] = useState<{
+    confidence: number;
+    regulatory_references?: string[];
+    hazards?: string[];
+  } | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognitionAny>(null);
 
   const fetchIncidents = useCallback(() => {
@@ -166,6 +173,7 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
     setShowForm(false);
     setFormData({ incident_type: "near_miss", severity: "medium", title: "", description: "", location: "" });
     setAnonymous(true);
+    setPhotoResult(null);
   };
 
   const toggleVoice = () => {
@@ -210,6 +218,47 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
     setListening(true);
   };
 
+  const handlePhotoAnalyze = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoAnalyzing(true);
+    setPhotoResult(null);
+    try {
+      const result = await uploadFile("/api/incidents/analyze-photo", file, token) as {
+        type?: string;
+        severity?: string;
+        description?: string;
+        hazards?: string[];
+        location_clues?: string;
+        regulatory_references?: string[];
+        confidence?: number;
+      };
+      // Pre-fill form fields from AI analysis
+      setFormData((prev) => ({
+        ...prev,
+        incident_type: result.type && INCIDENT_TYPES.some((t) => t.value === result.type) ? result.type : prev.incident_type,
+        severity: result.severity && SEVERITY_OPTIONS.some((s) => s.value === result.severity) ? result.severity : prev.severity,
+        description: [
+          result.description || "",
+          result.hazards?.length ? `\nHazards: ${result.hazards.join(", ")}` : "",
+          result.regulatory_references?.length ? `\nRegulatory: ${result.regulatory_references.join(", ")}` : "",
+        ].filter(Boolean).join(""),
+        location: result.location_clues || prev.location,
+      }));
+      setPhotoResult({
+        confidence: result.confidence ?? 0,
+        regulatory_references: result.regulatory_references,
+        hazards: result.hazards,
+      });
+    } catch (err) {
+      console.error("Photo analysis failed:", err);
+    } finally {
+      setPhotoAnalyzing(false);
+      // Reset file input so the same file can be re-selected
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -235,6 +284,83 @@ export default function IncidentsPage({ token }: IncidentsPageProps) {
 
       {showForm && !submitSuccess && (
         <form onSubmit={handleSubmit} className="card mb-6 space-y-6 p-4 md:p-6">
+          {/* Report from Photo */}
+          <div>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoAnalyze}
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={photoAnalyzing}
+              className="w-full bg-[#1B2A4A] border border-cyan-500/30 text-white rounded-xl p-4 flex items-center gap-4 hover:border-cyan-500/60 hover:bg-[#1f3158] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {photoAnalyzing ? (
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <svg className="animate-spin w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="w-10 h-10 flex items-center justify-center text-cyan-400">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </div>
+              )}
+              <div className="text-left">
+                <span className="font-semibold block">
+                  {photoAnalyzing ? "Analyzing image..." : "Report from Photo"}
+                </span>
+                <span className="text-sm text-gray-400">
+                  {photoAnalyzing ? "AI is identifying hazards and filling the report" : "Take a photo and AI will fill the report"}
+                </span>
+              </div>
+            </button>
+
+            {/* Photo analysis result badges */}
+            {photoResult && (
+              <div className="mt-3 space-y-2">
+                {photoResult.confidence < 0.5 && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 flex-shrink-0">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    Low confidence analysis. Please review carefully.
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                    photoResult.confidence >= 0.8 ? "bg-green-500/15 text-green-400 border border-green-500/30" :
+                    photoResult.confidence >= 0.5 ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30" :
+                    "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                  }`}>
+                    Confidence: {Math.round(photoResult.confidence * 100)}%
+                  </span>
+                  {photoResult.regulatory_references?.map((ref, i) => (
+                    <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                      {ref}
+                    </span>
+                  ))}
+                  {photoResult.hazards?.map((hazard, i) => (
+                    <span key={`h-${i}`} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/15 text-red-400 border border-red-500/30">
+                      {hazard}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Incident Type Buttons */}
           <div>
             <label className="block text-sm text-gray-400 mb-3 font-medium">Incident Type</label>

@@ -1,10 +1,31 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+import base64
+import json
+import os
+
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from typing import Optional
+import anthropic
+
 from app.core.database import get_db, get_pool
 from app.core.auth import get_current_user
 
 router = APIRouter()
+
+PHOTO_ANALYSIS_PROMPT = """You are an EHS incident analysis expert for a life sciences facility.
+Analyze this workplace photo and extract incident/hazard information.
+
+Return JSON only, no other text:
+{
+  "type": "injury | near_miss | hazard | environmental | observation",
+  "severity": "low | medium | high",
+  "description": "Detailed description of what you observe in the photo",
+  "hazards_identified": ["list of specific hazards visible"],
+  "location_clues": "Any visible location indicators (signs, labels, equipment)",
+  "immediate_actions": ["list of recommended immediate actions"],
+  "regulatory_references": ["relevant OSHA/EPA standards that may apply"],
+  "confidence": 0.0-1.0
+}"""
 
 
 class IncidentCreate(BaseModel):
@@ -88,3 +109,69 @@ async def get_incident(incident_id: str, db=Depends(get_db), current_user: dict 
     if not row:
         raise HTTPException(status_code=404, detail="Incident not found")
     return dict(row)
+
+
+@router.post("/analyze-photo")
+async def analyze_photo(
+    photo: UploadFile = File(...),
+    user=Depends(get_current_user),
+    pool=Depends(get_pool),
+):
+    try:
+        photo_bytes = await photo.read()
+        content_type = photo.content_type or "image/jpeg"
+        b64_data = base64.b64encode(photo_bytes).decode()
+
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": content_type,
+                            "data": b64_data,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": PHOTO_ANALYSIS_PROMPT,
+                    },
+                ],
+            }],
+        )
+
+        raw_text = message.content[0].text
+
+        # Parse JSON from response
+        try:
+            # Strip markdown code fences if present
+            text = raw_text
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0]
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0]
+            analysis = json.loads(text.strip())
+        except (json.JSONDecodeError, IndexError):
+            analysis = {
+                "type": "observation",
+                "severity": "medium",
+                "description": raw_text,
+                "hazards_identified": [],
+                "location_clues": "",
+                "immediate_actions": [],
+                "regulatory_references": [],
+                "confidence": 0.0,
+            }
+
+        return {"analysis": analysis}
+
+    except anthropic.APIError as e:
+        raise HTTPException(status_code=500, detail=f"Claude API error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Photo analysis failed: {str(e)}")

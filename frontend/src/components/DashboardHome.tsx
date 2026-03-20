@@ -21,11 +21,53 @@ interface DashboardHomeProps {
   onNavigate: (page: string) => void;
 }
 
+interface BriefingPattern {
+  severity: string;
+  description: string;
+  trend: string;
+  prediction: string;
+  recommended_action: string;
+}
+
+interface WeeklyBriefing {
+  overall_risk_level: string;
+  summary: string;
+  patterns: BriefingPattern[];
+  metrics: {
+    incidents_mtd: number;
+    open_capas: number;
+    overdue_capas: number;
+  };
+  upcoming_deadlines: {
+    reference: string;
+    title: string;
+    due_date: string;
+  }[];
+}
+
 interface Summary {
   incidents_mtd: number;
   open_capas: number;
   overdue_capas: number;
   framework_coverage_pct: number;
+}
+
+interface AuditFactor {
+  name: string;
+  score: number;
+  detail: string;
+}
+
+interface AuditRecommendation {
+  text: string;
+  priority: string;
+}
+
+interface AuditReadiness {
+  score: number;
+  level: string;
+  factors: AuditFactor[];
+  recommendations: AuditRecommendation[];
 }
 
 interface IncidentWeek {
@@ -108,6 +150,21 @@ function timeAgo(timestamp: string): string {
   return `${Math.floor(diffDays / 7)}w ago`;
 }
 
+const RISK_LEVEL_STYLES: Record<string, { bg: string; border: string; text: string; label: string }> = {
+  low: { bg: "bg-green-900/30", border: "border-green-600", text: "text-green-300", label: "Low Risk" },
+  moderate: { bg: "bg-yellow-900/30", border: "border-yellow-600", text: "text-yellow-300", label: "Moderate Risk" },
+  elevated: { bg: "bg-orange-900/30", border: "border-orange-600", text: "text-orange-300", label: "Elevated Risk" },
+  critical: { bg: "bg-red-900/30", border: "border-red-600", text: "text-red-300", label: "Critical Risk" },
+};
+
+const SEVERITY_BADGE: Record<string, string> = {
+  low: "bg-green-700 text-green-100",
+  moderate: "bg-yellow-700 text-yellow-100",
+  elevated: "bg-orange-700 text-orange-100",
+  high: "bg-red-700 text-red-100",
+  critical: "bg-red-900 text-red-100",
+};
+
 export default function DashboardHome({ token, onNavigate }: DashboardHomeProps) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [incidentsOverTime, setIncidentsOverTime] = useState<IncidentWeek[]>([]);
@@ -116,6 +173,11 @@ export default function DashboardHome({ token, onNavigate }: DashboardHomeProps)
   const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCell, setSelectedCell] = useState<FrameworkCoverage | null>(null);
+  const [briefing, setBriefing] = useState<WeeklyBriefing | null>(null);
+  const [briefingLoading, setBriefingLoading] = useState(true);
+  const [showBriefingModal, setShowBriefingModal] = useState(false);
+  const [auditReadiness, setAuditReadiness] = useState<AuditReadiness | null>(null);
+  const [showAuditModal, setShowAuditModal] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -134,6 +196,15 @@ export default function DashboardHome({ token, onNavigate }: DashboardHomeProps)
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    api<WeeklyBriefing>("/api/briefing/weekly", { token })
+      .then(setBriefing)
+      .catch(console.error)
+      .finally(() => setBriefingLoading(false));
+
+    api<AuditReadiness>("/api/audit/readiness", { token })
+      .then(setAuditReadiness)
+      .catch(console.error);
   }, [token]);
 
   if (loading) {
@@ -170,15 +241,17 @@ export default function DashboardHome({ token, onNavigate }: DashboardHomeProps)
       borderColor: summary?.overdue_capas ? "border-red-800" : "border-green-800",
       navigateTo: "capas",
     },
-    {
-      label: "CAPA Closure Rate",
-      value: `${closureRate}%`,
-      color: closureRate >= 70 ? "text-green-400" : closureRate >= 40 ? "text-amber-400" : "text-red-400",
-      bgColor: closureRate >= 70 ? "bg-green-900/20" : closureRate >= 40 ? "bg-amber-900/20" : "bg-red-900/20",
-      borderColor: closureRate >= 70 ? "border-green-800" : closureRate >= 40 ? "border-amber-800" : "border-red-800",
-      navigateTo: "capas",
-    },
   ];
+
+  // Audit readiness gauge helpers
+  const auditScore = auditReadiness?.score ?? 0;
+  const auditGaugeColor = auditScore >= 80 ? "#22c55e" : auditScore >= 60 ? "#eab308" : auditScore >= 40 ? "#f97316" : "#ef4444";
+  const auditLevel = auditReadiness?.level || (auditScore >= 80 ? "Audit Ready" : auditScore >= 60 ? "Needs Attention" : auditScore >= 40 ? "At Risk" : "Critical Gaps");
+  const auditLevelTextColor = auditScore >= 80 ? "text-green-400" : auditScore >= 60 ? "text-yellow-400" : auditScore >= 40 ? "text-orange-400" : "text-red-400";
+  // SVG circle gauge math: radius=40, circumference=251.3
+  const gaugeRadius = 40;
+  const gaugeCircumference = 2 * Math.PI * gaugeRadius;
+  const gaugeDashoffset = gaugeCircumference - (auditScore / 100) * gaugeCircumference;
 
   // Group framework coverage by tier, then series/category
   const tierGroups: Record<string, Record<string, FrameworkCoverage[]>> = {};
@@ -221,9 +294,56 @@ export default function DashboardHome({ token, onNavigate }: DashboardHomeProps)
     );
   };
 
+  const hasCriticalRisk = briefing && (briefing.overall_risk_level === "critical" || briefing.overall_risk_level === "elevated");
+  const criticalPatternCount = briefing?.patterns?.filter(p => p.severity === "critical" || p.severity === "high").length ?? 0;
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+
+      {/* Weekly Risk Briefing Banner */}
+      {!briefingLoading && (
+        <div className={`relative mb-6 rounded-xl overflow-hidden ${hasCriticalRisk ? "" : ""}`}>
+          {hasCriticalRisk && (
+            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-red-500" />
+          )}
+          <div className="bg-gradient-to-r from-[#1B2A4A] to-[#2E75B6] text-white rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                {/* Sparkles icon with pulse */}
+                <div className="animate-pulse">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z" />
+                    <path d="M5 3v4" />
+                    <path d="M3 5h4" />
+                    <path d="M19 17v4" />
+                    <path d="M17 19h4" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-lg font-bold">Weekly Risk Briefing</h2>
+                    {criticalPatternCount > 0 && (
+                      <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        {criticalPatternCount} alert{criticalPatternCount !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-blue-200 mt-0.5">
+                    {briefing?.summary || "AI-powered risk analysis based on your incident data"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBriefingModal(true)}
+                className="border border-white/40 hover:bg-white/10 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+              >
+                View Full Briefing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -237,6 +357,45 @@ export default function DashboardHome({ token, onNavigate }: DashboardHomeProps)
             <p className={`text-3xl font-bold mt-1 ${m.color}`}>{m.value}</p>
           </div>
         ))}
+        {/* Audit Readiness Gauge Card */}
+        <div
+          onClick={() => setShowAuditModal(true)}
+          className="card-hover bg-gray-900/40 border border-gray-700 cursor-pointer hover:ring-2 hover:ring-cyan-500/50 transition-all flex flex-col items-center justify-center py-3"
+        >
+          <svg width="100" height="100" viewBox="0 0 100 100" className="mb-1">
+            {/* Background track */}
+            <circle
+              cx="50" cy="50" r={gaugeRadius}
+              fill="none"
+              stroke="#374151"
+              strokeWidth="8"
+              strokeLinecap="round"
+              transform="rotate(-90 50 50)"
+              strokeDasharray={gaugeCircumference}
+            />
+            {/* Foreground arc */}
+            <circle
+              cx="50" cy="50" r={gaugeRadius}
+              fill="none"
+              stroke={auditGaugeColor}
+              strokeWidth="8"
+              strokeLinecap="round"
+              transform="rotate(-90 50 50)"
+              strokeDasharray={gaugeCircumference}
+              strokeDashoffset={gaugeDashoffset}
+              style={{ transition: "stroke-dashoffset 0.8s ease" }}
+            />
+            {/* Score text */}
+            <text x="50" y="46" textAnchor="middle" fill="white" fontSize="22" fontWeight="bold" dominantBaseline="middle">
+              {auditScore}
+            </text>
+            <text x="50" y="62" textAnchor="middle" fill="#9ca3af" fontSize="8">
+              / 100
+            </text>
+          </svg>
+          <p className="text-sm text-gray-400">Audit Readiness</p>
+          <p className={`text-xs font-semibold ${auditLevelTextColor}`}>{auditLevel}</p>
+        </div>
       </div>
 
       {/* 2-Column Layout */}
@@ -420,6 +579,143 @@ export default function DashboardHome({ token, onNavigate }: DashboardHomeProps)
         </div>
       </div>
 
+      {/* Weekly Risk Briefing Modal */}
+      {showBriefingModal && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+          onClick={() => setShowBriefingModal(false)}
+        >
+          <div
+            className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-5 flex items-center justify-between rounded-t-xl z-10">
+              <h2 className="text-xl font-bold text-white">Weekly Risk Briefing</h2>
+              <button
+                onClick={() => setShowBriefingModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-5 space-y-6">
+              {/* Risk Summary Banner */}
+              {briefing && (() => {
+                const style = RISK_LEVEL_STYLES[briefing.overall_risk_level] || RISK_LEVEL_STYLES.low;
+                return (
+                  <div className={`rounded-lg border p-4 ${style.bg} ${style.border}`}>
+                    <span className={`text-sm font-bold uppercase tracking-wide ${style.text}`}>
+                      {style.label}
+                    </span>
+                    <p className="text-sm text-gray-300 mt-1">{briefing.summary}</p>
+                  </div>
+                );
+              })()}
+
+              {/* Pattern Alerts */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Pattern Alerts</h3>
+                {(!briefing?.patterns || briefing.patterns.length === 0) ? (
+                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-gray-600 mx-auto mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <p className="text-sm text-gray-400">
+                      Insufficient incident data for pattern detection. Keep reporting incidents to enable predictive analytics.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {briefing.patterns.map((pattern, idx) => (
+                      <div key={idx} className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${SEVERITY_BADGE[pattern.severity] || SEVERITY_BADGE.moderate}`}>
+                            {pattern.severity?.toUpperCase()}
+                          </span>
+                          {pattern.trend && (
+                            <span className="text-xs text-gray-400">Trend: {pattern.trend}</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-200 mb-2">{pattern.description}</p>
+                        {pattern.prediction && (
+                          <p className="text-xs text-gray-400 mb-2">
+                            <span className="font-semibold text-gray-300">Prediction:</span> {pattern.prediction}
+                          </p>
+                        )}
+                        {pattern.recommended_action && (
+                          <p className="text-xs text-gray-400 mb-3">
+                            <span className="font-semibold text-gray-300">Recommended:</span> {pattern.recommended_action}
+                          </p>
+                        )}
+                        <button
+                          onClick={() => { setShowBriefingModal(false); onNavigate("capas"); }}
+                          className="text-xs bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded transition-colors font-medium"
+                        >
+                          Create CAPA
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Metrics Snapshot */}
+              {briefing?.metrics && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Metrics Snapshot</h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-blue-400">{briefing.metrics.incidents_mtd}</p>
+                      <p className="text-xs text-gray-400 mt-1">Incidents MTD</p>
+                    </div>
+                    <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-amber-400">{briefing.metrics.open_capas}</p>
+                      <p className="text-xs text-gray-400 mt-1">Open CAPAs</p>
+                    </div>
+                    <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 text-center">
+                      <p className={`text-2xl font-bold ${briefing.metrics.overdue_capas > 0 ? "text-red-400" : "text-green-400"}`}>
+                        {briefing.metrics.overdue_capas}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">Overdue CAPAs</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Upcoming Deadlines */}
+              {briefing?.upcoming_deadlines && briefing.upcoming_deadlines.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Upcoming Deadlines</h3>
+                  <div className="space-y-2">
+                    {briefing.upcoming_deadlines.map((dl, idx) => (
+                      <div key={idx} className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-amber-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                          <line x1="16" y1="2" x2="16" y2="6" />
+                          <line x1="8" y1="2" x2="8" y2="6" />
+                          <line x1="3" y1="10" x2="21" y2="10" />
+                        </svg>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-200 truncate">{dl.title}</p>
+                          <p className="text-xs text-gray-500">{dl.reference}</p>
+                        </div>
+                        <span className="text-xs text-amber-400 font-medium whitespace-nowrap">{dl.due_date}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Framework Coverage Detail Modal */}
       {selectedCell && (
         <div
@@ -497,6 +793,99 @@ export default function DashboardHome({ token, onNavigate }: DashboardHomeProps)
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Audit Readiness Detail Modal */}
+      {showAuditModal && auditReadiness && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+          onClick={() => setShowAuditModal(false)}
+        >
+          <div
+            className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-w-lg w-full mx-4 p-6 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                {/* Mini gauge in modal header */}
+                <svg width="56" height="56" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r={gaugeRadius} fill="none" stroke="#374151" strokeWidth="8" strokeLinecap="round" transform="rotate(-90 50 50)" strokeDasharray={gaugeCircumference} />
+                  <circle cx="50" cy="50" r={gaugeRadius} fill="none" stroke={auditGaugeColor} strokeWidth="8" strokeLinecap="round" transform="rotate(-90 50 50)" strokeDasharray={gaugeCircumference} strokeDashoffset={gaugeDashoffset} />
+                  <text x="50" y="50" textAnchor="middle" fill="white" fontSize="24" fontWeight="bold" dominantBaseline="middle">{auditScore}</text>
+                </svg>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Audit Readiness</h3>
+                  <p className={`text-sm font-medium ${auditLevelTextColor}`}>{auditLevel}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAuditModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Factors breakdown */}
+            <div className="space-y-3 mb-6">
+              <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Score Breakdown</h4>
+              {auditReadiness.factors.map((factor, i) => {
+                const barColor = factor.score >= 80 ? "bg-green-500" : factor.score >= 60 ? "bg-yellow-500" : factor.score >= 40 ? "bg-orange-500" : "bg-red-500";
+                return (
+                  <div key={i} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-300">{factor.name}</span>
+                      <span className="text-sm font-mono text-gray-400">{factor.score}/100</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${barColor}`}
+                        style={{ width: `${factor.score}%`, transition: "width 0.6s ease" }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">{factor.detail}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Recommendations */}
+            {auditReadiness.recommendations.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Recommendations</h4>
+                {auditReadiness.recommendations.map((rec, i) => {
+                  const priorityBadge = rec.priority === "high" ? "bg-red-500/15 text-red-400 border-red-500/30"
+                    : rec.priority === "medium" ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                    : "bg-green-500/15 text-green-400 border-green-500/30";
+                  return (
+                    <div key={i} className="flex items-start gap-3 bg-gray-900/50 border border-gray-700 rounded-lg p-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${priorityBadge}`}>
+                            {rec.priority}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-300">{rec.text}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowAuditModal(false);
+                          onNavigate("capas");
+                        }}
+                        className="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/25 transition-colors whitespace-nowrap"
+                      >
+                        Create CAPA
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

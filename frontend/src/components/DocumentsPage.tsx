@@ -33,6 +33,26 @@ interface DocumentDetail {
   analyses: AnalysisResult[];
 }
 
+interface SOPSection {
+  heading: string;
+  content: string;
+}
+
+interface SOPRegRef {
+  citation: string;
+  description: string;
+}
+
+interface SOPData {
+  title: string;
+  document_number: string;
+  revision: string;
+  sections: SOPSection[];
+  regulatory_references: SOPRegRef[];
+  ppe_required: string[];
+  training_required: string[];
+}
+
 interface FrameworkCoverage {
   framework_tier: string;
   framework_category: string;
@@ -706,6 +726,140 @@ function DetailPanel({
   );
 }
 
+// --- SOP Preview ---
+
+function SOPPreview({ sop, onClose }: { sop: SOPData; onClose: () => void }) {
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const sectionsHtml = sop.sections
+      .map(
+        (s) =>
+          `<div style="margin-bottom:24px"><h2 style="font-size:16px;font-weight:700;margin-bottom:8px;color:#1a1a1a;text-transform:uppercase;border-bottom:1px solid #ddd;padding-bottom:4px">${s.heading}</h2><div style="font-size:14px;line-height:1.7;color:#333;white-space:pre-wrap">${s.content}</div></div>`
+      )
+      .join("");
+
+    const refsHtml = sop.regulatory_references
+      .map((r) => `<li><strong>${r.citation}</strong> -- ${r.description}</li>`)
+      .join("");
+
+    const ppeHtml = sop.ppe_required.map((p) => `<li>${p}</li>`).join("");
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>${sop.title}</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#333}@media print{body{margin:20px}}</style></head><body>
+      <h1 style="font-size:22px;margin-bottom:4px">${sop.title}</h1>
+      <p style="color:#666;font-size:13px">${sop.document_number} | ${sop.revision}</p>
+      <hr style="margin:16px 0">
+      ${sectionsHtml}
+      ${refsHtml ? `<h2 style="font-size:16px;font-weight:700;margin-top:32px;border-bottom:1px solid #ddd;padding-bottom:4px">REGULATORY REFERENCES</h2><ul>${refsHtml}</ul>` : ""}
+      ${ppeHtml ? `<h2 style="font-size:16px;font-weight:700;margin-top:32px;border-bottom:1px solid #ddd;padding-bottom:4px">PPE REQUIRED</h2><ul>${ppeHtml}</ul>` : ""}
+    </body></html>`);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  return (
+    <div className="mb-8">
+      {/* Controls bar */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold text-gray-100">Generated SOP Draft</h2>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handlePrint}
+            className="text-xs px-4 py-2 rounded-lg font-medium bg-navy-700 text-gray-200 border border-navy-600 hover:bg-navy-600 transition-colors"
+          >
+            Download / Print
+          </button>
+          <button
+            onClick={onClose}
+            className="text-xs px-4 py-2 rounded-lg font-medium bg-navy-800 text-gray-400 border border-navy-700 hover:bg-navy-700 hover:text-gray-200 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+
+      {/* Document-style card with light background */}
+      <div className="bg-white rounded-xl shadow-xl p-8 md:p-10 max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="border-b-2 border-gray-300 pb-4 mb-6">
+          <h1 className="text-xl font-bold text-gray-900">{sop.title}</h1>
+          <div className="flex gap-6 mt-2 text-sm text-gray-500">
+            <span>Doc #: {sop.document_number}</span>
+            <span>Rev: {sop.revision}</span>
+          </div>
+        </div>
+
+        {/* Sections */}
+        <div className="space-y-6">
+          {sop.sections.map((section, idx) => (
+            <div key={idx}>
+              <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-200 pb-1 mb-2">
+                {section.heading}
+              </h2>
+              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {section.content}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Regulatory references */}
+        {sop.regulatory_references.length > 0 && (
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Regulatory References</h3>
+            <div className="flex flex-wrap gap-2">
+              {sop.regulatory_references.map((ref, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-blue-50 text-blue-800 border border-blue-200"
+                  title={ref.description}
+                >
+                  {ref.citation}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* PPE */}
+        {sop.ppe_required.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">PPE Required</h3>
+            <div className="flex flex-wrap gap-2">
+              {sop.ppe_required.map((ppe, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200"
+                >
+                  {ppe}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Training */}
+        {sop.training_required.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Training Required</h3>
+            <div className="flex flex-wrap gap-2">
+              {sop.training_required.map((t, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-800 border border-green-200"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
@@ -718,6 +872,15 @@ export default function DocumentsPage({ token }: DocumentsPageProps) {
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // SOP Generator state
+  const [sopFormOpen, setSopFormOpen] = useState(false);
+  const [sopTopic, setSopTopic] = useState("");
+  const [sopFacility, setSopFacility] = useState("");
+  const [sopContext, setSopContext] = useState("");
+  const [sopGenerating, setSopGenerating] = useState(false);
+  const [sopResult, setSopResult] = useState<SOPData | null>(null);
+  const [sopError, setSopError] = useState<string | null>(null);
 
   // Framework coverage heatmap state (aggregated across all docs)
   const [frameworkCoverage, setFrameworkCoverage] = useState<FrameworkCoverage[]>([]);
@@ -928,6 +1091,34 @@ export default function DocumentsPage({ token }: DocumentsPageProps) {
     }
   };
 
+  const handleGenerateSop = async () => {
+    if (!sopTopic.trim()) return;
+    setSopGenerating(true);
+    setSopError(null);
+    setSopResult(null);
+
+    try {
+      const result = await api<{ sop: SOPData; document_id: string | null }>(
+        "/api/documents/generate-sop",
+        {
+          token,
+          method: "POST",
+          body: {
+            topic: sopTopic.trim(),
+            facility: sopFacility.trim() || undefined,
+            additional_context: sopContext.trim() || undefined,
+          },
+        }
+      );
+      setSopResult(result.sop);
+      setSopFormOpen(false);
+    } catch (err) {
+      setSopError(err instanceof Error ? err.message : "SOP generation failed");
+    } finally {
+      setSopGenerating(false);
+    }
+  };
+
   const statusBadge = (status: string) => {
     switch (status) {
       case "analyzed":
@@ -1003,6 +1194,105 @@ export default function DocumentsPage({ token }: DocumentsPageProps) {
           </>
         )}
       </div>
+
+      {/* SOP Generator */}
+      {sopResult ? (
+        <SOPPreview
+          sop={sopResult}
+          onClose={() => {
+            setSopResult(null);
+            setSopTopic("");
+            setSopFacility("");
+            setSopContext("");
+          }}
+        />
+      ) : sopFormOpen ? (
+        <div className="card mb-8">
+          <h2 className="text-base font-bold text-gray-100 mb-4">Generate SOP Draft</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                What SOP do you need? <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={sopTopic}
+                onChange={(e) => setSopTopic(e.target.value)}
+                placeholder="e.g., Chemical Waste Disposal, Fume Hood Operation, Biosafety Cabinet Use"
+                className="w-full rounded-lg bg-navy-800 border border-navy-600 text-gray-200 px-4 py-2.5 text-sm placeholder:text-gray-600 focus:outline-none focus:border-safe/60 focus:ring-1 focus:ring-safe/30"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Which facility/lab?
+              </label>
+              <input
+                type="text"
+                value={sopFacility}
+                onChange={(e) => setSopFacility(e.target.value)}
+                placeholder="e.g., Building A - Chemistry Lab 201"
+                className="w-full rounded-lg bg-navy-800 border border-navy-600 text-gray-200 px-4 py-2.5 text-sm placeholder:text-gray-600 focus:outline-none focus:border-safe/60 focus:ring-1 focus:ring-safe/30"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Any specific requirements?
+              </label>
+              <textarea
+                value={sopContext}
+                onChange={(e) => setSopContext(e.target.value)}
+                rows={3}
+                placeholder="e.g., Must include cyanide handling precautions, needs to reference site-specific emergency contacts"
+                className="w-full rounded-lg bg-navy-800 border border-navy-600 text-gray-200 px-4 py-2.5 text-sm placeholder:text-gray-600 focus:outline-none focus:border-safe/60 focus:ring-1 focus:ring-safe/30 resize-none"
+              />
+            </div>
+            {sopError && (
+              <div className="text-sm text-red-400 bg-red-900/20 border border-red-800/40 rounded-lg px-4 py-2">
+                {sopError}
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleGenerateSop}
+                disabled={!sopTopic.trim() || sopGenerating}
+                className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sopGenerating ? (
+                  <>
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                    <span>Generating SOP draft...</span>
+                    <span className="inline-block animate-pulse">&#10024;</span>
+                  </>
+                ) : (
+                  "Generate Draft"
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setSopFormOpen(false);
+                  setSopError(null);
+                }}
+                disabled={sopGenerating}
+                className="text-sm text-gray-400 hover:text-gray-200 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={() => setSopFormOpen(true)}
+            className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-medium bg-navy-700 text-gray-200 border border-navy-600 hover:bg-navy-600 hover:text-white transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Generate SOP
+          </button>
+        </div>
+      )}
 
       {/* Document list */}
       <div className="space-y-3 mb-8">

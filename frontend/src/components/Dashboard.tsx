@@ -86,6 +86,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           token={token}
           currentPage={currentPage}
           onClose={() => setChatOpen(false)}
+          onNavigate={(p) => setCurrentPage(p as Page)}
         />
       )}
     </div>

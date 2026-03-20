@@ -33,7 +33,33 @@ When asked questions, you:
 4. Flag when something requires a qualified professional (e.g., CIH for IH assessments)
 5. Speak in plain language, not regulatory jargon, unless the user asks for technical detail
 
-You are not a lawyer. You do not provide legal advice. You provide EHS operational guidance based on regulatory standards and best practices."""
+You are not a lawyer. You do not provide legal advice. You provide EHS operational guidance based on regulatory standards and best practices.
+
+When the user asks about a regulation or compliance requirement:
+
+1. Cite the specific regulation (e.g., OSHA 29 CFR 1910.1200 Hazard Communication)
+2. Summarize requirements in plain language with a checklist of required elements
+3. Cross-reference against this client's framework coverage data provided in the context
+4. Provide the gap status as a mini scorecard showing what's covered vs missing
+5. Offer to create CAPAs for each missing element
+
+When your response involves regulatory compliance or gap analysis, structure your response as JSON with this format:
+{
+  "type": "regulation_card",
+  "citation": "OSHA 29 CFR 1910.XXXX",
+  "title": "Standard Name",
+  "requirements": [
+    {"item": "requirement description", "status": "covered|missing", "detail": "explanation"}
+  ],
+  "covered_count": N,
+  "total_count": N,
+  "summary": "plain language summary",
+  "recommendations": ["action items"]
+}
+
+If the question is NOT about regulations, respond with plain text as normal.
+Always cite the specific CFR section number. Never guess at regulatory requirements.
+If uncertain about a specific requirement, say so and recommend consulting the regulation directly."""
 
 
 DOCUMENT_ANALYSIS_PROMPT = """Analyze this document chunk against the Pfizer 4-Tier EHS Management System framework.
@@ -96,11 +122,58 @@ async def analyze_document_chunk(text: str) -> dict:
 async def get_chat_response(history: list[dict], tenant_context: dict) -> str:
     c = get_client()
 
+    # Build framework coverage summary
+    framework_gaps = tenant_context.get("framework_gaps", [])
+    coverage_lines = []
+    for g in framework_gaps:
+        status = g.get("coverage_status", "unknown")
+        category = g.get("framework_category", "Unknown")
+        tier = g.get("framework_tier", "?")
+        gap_list = g.get("gaps", [])
+        gap_str = f" -- gaps: {', '.join(gap_list)}" if gap_list else ""
+        coverage_lines.append(f"  Tier {tier} | {category} | {status}{gap_str}")
+    coverage_summary = "\n".join(coverage_lines) if coverage_lines else "  No framework analysis data yet."
+
+    # Build recent incidents summary
+    recent_incidents = tenant_context.get("recent_incidents", [])
+    if recent_incidents:
+        incident_lines = []
+        for inc in recent_incidents:
+            incident_lines.append(
+                f"  [{inc.get('severity', 'unknown')}] {inc.get('title', 'Untitled')} "
+                f"({inc.get('status', 'unknown')}) - {inc.get('date', 'no date')}"
+            )
+        incidents_summary = "\n".join(incident_lines)
+    else:
+        incidents_summary = "  No recent incidents."
+
+    # Build open CAPAs summary
+    open_capa_list = tenant_context.get("open_capa_list", [])
+    if open_capa_list:
+        capa_lines = []
+        for capa in open_capa_list:
+            capa_lines.append(
+                f"  [{capa.get('priority', 'unknown')}] {capa.get('title', 'Untitled')} "
+                f"(status: {capa.get('status', 'unknown')}, due: {capa.get('due_date', 'no date')})"
+            )
+        capas_summary = "\n".join(capa_lines)
+    else:
+        capas_summary = "  No open CAPAs."
+
     context_str = f"""
 Current tenant data:
 - Open incidents: {tenant_context.get('open_incidents', 0)}
 - Open/in-progress CAPAs: {tenant_context.get('open_capas', 0)}
-- Framework analysis data available: {len(tenant_context.get('framework_gaps', []))} analyzed chunks
+- Framework analysis chunks: {len(framework_gaps)}
+
+Framework Coverage:
+{coverage_summary}
+
+Recent Incidents:
+{incidents_summary}
+
+Open CAPAs:
+{capas_summary}
 """
     if tenant_context.get("page_context"):
         context_str += f"- User is currently viewing: {json.dumps(tenant_context['page_context'])}\n"

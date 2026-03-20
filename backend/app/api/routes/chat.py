@@ -48,10 +48,28 @@ async def send_message(msg: ChatMessage, db=Depends(get_db), current_user: dict 
         "SELECT COUNT(*) FROM capas WHERE tenant_id = $1::uuid AND status IN ('open', 'in_progress')", tid
     )
 
+    # Fetch recent incidents for AI context
+    recent_incidents = await db.fetch(
+        """SELECT title, severity, status, created_at::text AS date
+           FROM incidents WHERE tenant_id = $1::uuid
+           ORDER BY created_at DESC LIMIT 10""",
+        tid,
+    )
+
+    # Fetch open CAPAs detail for AI context
+    open_capa_list = await db.fetch(
+        """SELECT title, priority, status, due_date::text AS due_date
+           FROM capas WHERE tenant_id = $1::uuid AND status IN ('open', 'in_progress')
+           ORDER BY due_date ASC NULLS LAST LIMIT 10""",
+        tid,
+    )
+
     tenant_context = {
         "framework_gaps": [dict(g) for g in gaps[:20]],
         "open_incidents": open_incidents,
         "open_capas": open_capas,
+        "recent_incidents": [dict(i) for i in recent_incidents],
+        "open_capa_list": [dict(c) for c in open_capa_list],
         "page_context": msg.context,
     }
 
