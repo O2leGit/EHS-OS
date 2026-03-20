@@ -127,9 +127,7 @@ async def public_analysis(response: Response, cache_bust: str = ""):
         open_c = await db.fetchval(
             "SELECT COUNT(*) FROM capas WHERE tenant_id=$1 AND status IN ('open','in_progress')", tid)
         total_c = await db.fetchval("SELECT COUNT(*) FROM capas WHERE tenant_id=$1", tid)
-        closed_c = await db.fetchval("SELECT COUNT(*) FROM capas WHERE tenant_id=$1 AND status = 'closed'", tid)
-        closure_rate = closed_c / max(total_c, 1)
-        capa_score = int(max(0, min(100, closure_rate * 100 - (overdue_c * 15))))
+        capa_score = int(max(0, min(100, 100 - (overdue_c * 25) - max(0, open_c - 3) * 5)))
 
         total_inc = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1", tid)
         closed_inc = await db.fetchval(

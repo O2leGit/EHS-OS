@@ -27,11 +27,9 @@ async def get_audit_readiness(db=Depends(get_db), user: dict = Depends(get_curre
         "SELECT COUNT(*) FROM capas WHERE tenant_id=$1::uuid AND status != 'closed' AND due_date < CURRENT_DATE", tid
     )
     total_capas = await db.fetchval("SELECT COUNT(*) FROM capas WHERE tenant_id=$1::uuid", tid)
-    closed_capas = await db.fetchval(
-        "SELECT COUNT(*) FROM capas WHERE tenant_id=$1::uuid AND status = 'closed'", tid
-    )
-    closure_rate = closed_capas / max(total_capas, 1)
-    capa_score = int(max(0, min(100, closure_rate * 100 - (overdue_capas * 15))))
+    # CAPA health: penalize overdue heavily, but don't penalize open CAPAs too much
+    # (having open CAPAs is normal - it means you're tracking issues)
+    capa_score = int(max(0, min(100, 100 - (overdue_capas * 25) - max(0, open_capas - 3) * 5)))
 
     # Factor 3: Incident Investigation (weight 20%)
     total_incidents = await db.fetchval("SELECT COUNT(*) FROM incidents WHERE tenant_id=$1::uuid", tid)

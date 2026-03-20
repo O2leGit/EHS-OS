@@ -581,7 +581,7 @@ async def reseed_demo_data(db):
     # Block 1A: Close old incidents (older than 90 days)
     # =========================================================================
     # Close specific old incidents that should not still be open
-    for inc_num in ["INC-0001", "INC-0008", "INC-0009", "INC-0010", "INC-0011"]:
+    for inc_num in ["INC-0001", "INC-0004", "INC-0008", "INC-0009", "INC-0010", "INC-0011", "INC-0012", "INC-0017"]:
         await db.execute(
             "UPDATE incidents SET status = 'closed' WHERE tenant_id = $1 AND incident_number = $2 AND status = 'open'",
             tid, inc_num,
