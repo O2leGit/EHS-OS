@@ -50,15 +50,15 @@ async def seed():
             tid, hash_password("demo123"),
         )
 
-        # Create incidents
+        # Create incidents (based on real Bio-Techne MOR data, Feb 2026)
         incidents_data = [
-            ("injury", "high", "Chemical splash during transfer", "Lab technician received minor chemical splash to forearm during solvent transfer. First aid administered on-site. PPE (goggles, gloves) were worn but lab coat sleeve was rolled up.", "Building A - Lab 201", "Maria Rodriguez"),
+            ("injury", "high", "Laceration from chipped glass gel plate in dishwashing room", "Employee cut hand on chipped glass gel plate while removing from opaque water-filled container in dishwashing room. Required 5 stitches. Root cause: chipped plates not removed from service. All 5 corrective actions complete.", "Minneapolis - Dishwashing Room", "Maria Rodriguez"),
             ("near_miss", "medium", "Unsecured gas cylinder in hallway", "Nitrogen gas cylinder found unsecured in Building B corridor during routine walkthrough. Cylinder was upright but not chained to wall mount.", "Building B - Corridor 2", "James Parker"),
             ("hazard", "high", "Fume hood airflow below threshold", "Annual fume hood certification found Hood #3 in Lab 105 operating at 85 fpm face velocity. Minimum required is 100 fpm per OSHA 29 CFR 1910.1450.", "Building A - Lab 105", "Sarah Chen"),
             ("environmental", "medium", "Waste satellite area exceeding 55-gallon limit", "Weekly inspection found satellite accumulation area in Lab 302 with approximately 70 gallons of hazardous waste. RCRA limit is 55 gallons.", "Building A - Lab 302", "Maria Rodriguez"),
             ("near_miss", "low", "Tripping hazard from extension cord", "Extension cord running across walkway in office area near Lab 201 entrance. No incident occurred but multiple staff reported near-trips.", "Building A - Office Area", "Anonymous"),
             ("observation", "low", "Emergency shower not tested monthly", "Review of maintenance logs shows Building B emergency shower/eyewash stations have not been tested since January.", "Building B - All Floors", "James Parker"),
-            ("injury", "medium", "Ergonomic strain from repetitive pipetting", "Research associate reporting wrist pain after extended pipetting session (4+ hours). Referred to occupational health.", "Building A - Lab 203", "Anonymous"),
+            ("injury", "medium", "Ergonomic strain from repetitive kit packing assembly", "Employee developed progressive right upper back and shoulder pain during assembly in kit packing. Repetitive arm movement over extended shifts. Ergonomic assessment completed.", "Minneapolis - Kit Packing", "Anonymous"),
         ]
 
         incident_ids = []
@@ -453,9 +453,9 @@ async def reseed_demo_data(db):
         },
         ("Ergonomics", "200"): {
             "status": "gap",
-            "gaps": ["No ergonomics assessment program", "No workstation evaluation procedures", "Active injury (INC-0007) demonstrates uncontrolled risk"],
+            "gaps": ["No ergonomics assessment program", "No workstation evaluation procedures", "Active injuries (INC-0007, INC-0016) from kit packing demonstrate uncontrolled risk"],
             "risk": "high",
-            "reasoning": "No ergonomics program documented. INC-0007 (ergonomic strain from repetitive pipetting) indicates this is an active risk. Repetitive motion injuries from pipetting are the #1 ergonomic hazard in life sciences laboratories.",
+            "reasoning": "No ergonomics program documented. INC-0007 (ergonomic strain from kit packing) and INC-0016 (wrist strain from Luminex foil pouch handling) indicate active, recurring risk in kit packing operations. Ergonomist approved per Feb 2026 MOR. Repetitive motion injuries from assembly and pipetting are the #1 ergonomic hazard in life sciences laboratories.",
         },
         ("Incident Management", "300"): {
             "status": "covered",
@@ -499,7 +499,7 @@ async def reseed_demo_data(db):
         ("INC-0013", "near_miss", "medium", "Pipette tip box fell from overhead shelf onto bench", "Box of pipette tips fell from overhead shelf onto workbench in Lab 203. No personnel were struck. Shelf brackets found to be loose.", "Building A - Lab 203", "Anonymous", "closed", 57),
         ("INC-0014", "hazard", "medium", "Eyewash station blocked by equipment storage", "Emergency eyewash station in Lab 301 found blocked by temporarily stored centrifuge equipment. Access path was completely obstructed.", "Building B - Lab 301", "James Parker", "open", 37),
         ("INC-0015", "near_miss", "low", "Wet floor near autoclave with no warning sign", "Wet floor observed near autoclave area in Building B corridor. No wet floor sign posted. Condensation from autoclave cooling cycle was the source.", "Building B - Corridor 1", "Sarah Chen", "closed", 29),
-        ("INC-0016", "injury", "medium", "Thumb strain from repetitive micropipette use", "Research associate reporting persistent thumb pain after extended micropipetting sessions over two weeks. Referred to occupational health for evaluation.", "Building A - Lab 203", "Maria Rodriguez", "open", 18),
+        ("INC-0016", "injury", "medium", "Wrist strain from repetitive Luminex foil pouch handling", "Employee reported left-hand/wrist discomfort from repetitive template folding, vial packing, kit-pack tasks (Luminex foil pouches). Recommended surgery for right wrist. Has prior carpal tunnel history.", "Minneapolis - Kit Packing", "Maria Rodriguez", "open", 18),
         ("INC-0017", "environmental", "low", "Drain near loading dock has chemical residue", "Chemical residue observed around floor drain near loading dock. Residue appears to be from cleaning solution runoff. Sample collected for analysis.", "Building B - Exterior", "James Parker", "open", 12),
         ("INC-0018", "near_miss", "medium", "Glass beaker shattered during cleaning, fragments on floor", "500mL glass beaker shattered during cleaning at sink station in Lab 201. Glass fragments scattered across floor area. Area cordoned off and cleaned per glass breakage SOP.", "Building A - Lab 201", "Anonymous", "open", 4),
         ("INC-0019", "observation", "low", "Fire extinguisher inspection tag shows last check 14 months ago", "Monthly fire extinguisher inspection found unit in Building B Corridor 2 with inspection tag showing last check was 14 months prior. Unit appears functional but out of compliance.", "Building B - Corridor 2", "Sarah Chen", "open", 1),
@@ -588,8 +588,9 @@ async def reseed_demo_data(db):
 
     # =========================================================================
     # Block 1A: Close old incidents (older than 90 days)
+    # Based on real Bio-Techne MOR data: INC-0001 laceration (all 5 corrective
+    # actions complete), plus older incidents with completed investigations.
     # =========================================================================
-    # Close specific old incidents that should not still be open
     for inc_num in ["INC-0001", "INC-0004", "INC-0008", "INC-0009", "INC-0010", "INC-0011", "INC-0012", "INC-0015", "INC-0017"]:
         await db.execute(
             "UPDATE incidents SET status = 'closed' WHERE tenant_id = $1 AND incident_number = $2 AND status = 'open'",
@@ -620,10 +621,16 @@ async def reseed_demo_data(db):
         ("Toronto Diagnostics", "YYZ", "lab", 80),
         ("Toronto R&D", "YZ2", "lab", 60),
         ("San Jose R&D", "SJC", "lab", 200),
+        ("Denver Operations", "DEN", "warehouse", 45),
     ]
 
     # Clean up old sites that don't match new structure
-    await db.execute("DELETE FROM sites WHERE tenant_id = $1 AND code NOT IN ('MSP','STP','SJC','WAL','YYZ','YZ2')", tid)
+    # Clean up old sites: nullify FKs first, then delete
+    old_sites = await db.fetch("SELECT id FROM sites WHERE tenant_id = $1 AND code NOT IN ('MSP','STP','SJC','WAL','YYZ','YZ2','DEN')", tid)
+    for old_site in old_sites:
+        await db.execute("UPDATE incidents SET site_id = NULL WHERE site_id = $1", old_site["id"])
+        await db.execute("UPDATE documents SET site_id = NULL WHERE site_id = $1", old_site["id"])
+    await db.execute("DELETE FROM sites WHERE tenant_id = $1 AND code NOT IN ('MSP','STP','SJC','WAL','YYZ','YZ2','DEN')", tid)
 
     site_ids = {}
     for name, code, stype, emp_count in sites_data:
@@ -667,6 +674,12 @@ async def reseed_demo_data(db):
         ("INC-0026", "observation", "low", "First aid kit expired supplies", "Monthly first aid kit check found 4 items past expiration date in 2nd floor kit.", "Toronto R&D - 2nd Floor", "Maria Rodriguez", "closed", 15, "YZ2"),
         ("INC-0027", "hazard", "high", "Biosafety cabinet certification expired 2 months", "BSC-2 in Lab A found with certification expired since January 2026. Cabinet has been in active use.", "San Jose - Lab A", "James Parker", "open", 6, "SJC"),
         ("INC-0028", "near_miss", "medium", "Cryogenic liquid splash during transfer", "Liquid nitrogen splashed during dewar transfer when receiving vessel was not pre-cooled.", "San Jose - Lab B", "Anonymous", "open", 3, "SJC"),
+        # Real MOR Feb 2026 incidents
+        ("INC-0029", "near_miss", "low", "Plexiglass piece fell from fume hood during cleaning", "Plexiglass piece fell from fume hood onto employee's head while cleaning. Loose screws from recent PM. Minor close call, struck by hazard.", "Minneapolis - Lab", "Anonymous", "closed", 14, "MSP"),
+        ("INC-0030", "injury", "medium", "IT band knee injury from awkward lab chair transition", "Employee's IT band snapped while transitioning from standing to sitting on lab chair. Awkward positioning caused the injury.", "Minneapolis - Lab", "Maria Rodriguez", "open", 10, "MSP"),
+        ("INC-0031", "near_miss", "low", "Ethanol splash under safety glasses during hand sterilization", "Ethanol droplet went under safety glasses into left eye during hand sterilization. Eye flushed immediately at eyewash station. First aid only, no medical treatment required.", "Minneapolis - Lab", "Anonymous", "closed", 7, "MSP"),
+        # Denver site incidents
+        ("INC-0032", "near_miss", "low", "Forklift near-miss in Denver warehouse", "Forklift operator nearly struck pedestrian at blind corner in Denver warehouse. Speed limit signage and convex mirrors recommended.", "Denver - Warehouse", "James Parker", "open", 9, "DEN"),
     ]
 
     for inc_num, itype, sev, title, desc, loc, reporter, status, days_ago, site_code in multi_site_incidents:

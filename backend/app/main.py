@@ -263,10 +263,10 @@ async def public_analysis(response: Response, cache_bust: str = ""):
         from datetime import datetime, timezone
         import uuid
         return {
-            "data_version": "4.1-audit-recalibrated",
+            "data_version": "5.1-mor-calibrated",
             "request_id": str(uuid.uuid4()),
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "note": "v5.0: Bio-Techne demo, 6 sites (MSP, STP, WAL, YYZ, YZ2, SJC), 28 incidents, 9 CAPAs, TRIR/DART metrics, AI executive reports, predictive briefing, audit readiness with top_actions",
+            "note": "v5.1: Real Bio-Techne MOR data (Feb 2026). 7 sites (MSP, STP, WAL, YYZ, YZ2, SJC, DEN), 32 incidents, 9 CAPAs. DART history (CY23-CY26), ISO 14001 passed 0 nonconformances, ergonomist approved. TRIR/DART metrics, AI executive reports, predictive briefing, audit readiness with top_actions.",
             "platform": "EHS Operating System (EHS-OS)",
             "description": "AI-native Environmental Health & Safety platform built for Bio-Techne",
             "demo_tenant": tenant["name"],
@@ -308,6 +308,15 @@ async def public_analysis(response: Response, cache_bust: str = ""):
                     "open_capas": open_c,
                     "overdue_capas": overdue_c,
                     "capa_closure_rate": f"{int((total_c - open_c) / max(total_c, 1) * 100)}%",
+                },
+                "dart_history": {
+                    "cy23": 0.21,
+                    "cy24": 0.87,
+                    "cy25": 0.46,
+                    "cy26_ytd": 1.33,
+                    "rolling_12mo": 0.72,
+                    "fy26": 0.70,
+                    "note": "CY26 YTD: 3 recordables, FY26: 10 recordables. 7 recordables in last 90 days. Source: Feb 2026 MOR.",
                 },
                 "investigation": {
                     "total_incidents": total_inc,
@@ -444,7 +453,8 @@ async def public_analysis(response: Response, cache_bust: str = ""):
                     "Near-miss reporting ratio improving (36% up from 29%). Frontline employees reporting hazards before injuries.",
                     "Two CAPAs closed this period (CAPA-0001, CAPA-0009), demonstrating system drives completion.",
                     "Five documents analyzed against framework. Coverage improved from 40% to 55%.",
-                    "Multi-site incident reporting now active at all 4 facilities."
+                    "ISO 14001 Surveillance Audit passed with 0 nonconformances, only 6 verbal OFIs.",
+                    "Multi-site incident reporting now active at all 7 facilities."
                 ]
             },
             "branding": {
