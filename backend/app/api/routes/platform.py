@@ -155,6 +155,44 @@ async def get_tenant(tenant_id: str, db=Depends(get_db), admin=Depends(require_p
     }
 
 
+class TenantUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    brand_name: Optional[str] = None
+    logo_url: Optional[str] = None
+    brand_color_primary: Optional[str] = None
+    brand_color_accent: Optional[str] = None
+    partner_id: Optional[str] = ""  # empty string means "remove partner", None means "don't change"
+
+
+@router.patch("/tenants/{tenant_id}")
+async def update_tenant(tenant_id: str, body: TenantUpdateRequest, db=Depends(get_db), admin=Depends(require_platform_admin)):
+    """Update tenant config (name, branding, partner assignment)."""
+    tenant = await db.fetchrow("SELECT id FROM tenants WHERE id = $1::uuid", tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    updates = []
+    params = [tenant_id]
+    idx = 2
+    for field, col in [("name", "name"), ("brand_name", "brand_name"), ("logo_url", "logo_url"),
+                       ("brand_color_primary", "brand_color_primary"), ("brand_color_accent", "brand_color_accent")]:
+        val = getattr(body, field)
+        if val is not None:
+            updates.append(f"{col} = ${idx}")
+            params.append(val)
+            idx += 1
+    # Handle partner_id: empty string = remove, non-empty = set
+    if body.partner_id is not None:
+        if body.partner_id == "" or body.partner_id == "null":
+            updates.append(f"partner_id = NULL")
+        else:
+            updates.append(f"partner_id = ${idx}::uuid")
+            params.append(body.partner_id)
+            idx += 1
+    if updates:
+        await db.execute(f"UPDATE tenants SET {', '.join(updates)} WHERE id = $1::uuid", *params)
+    return {"updated": True, "tenant_id": tenant_id}
+
+
 @router.delete("/tenants/{tenant_id}")
 async def delete_tenant(tenant_id: str, db=Depends(get_db), admin=Depends(require_platform_admin)):
     """Delete a tenant and all its data."""

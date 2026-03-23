@@ -206,14 +206,22 @@ async def public_analysis(response: Response, cache_bust: str = ""):
                 "SELECT COUNT(*) FROM capas WHERE tenant_id=$1 AND status != 'closed' AND due_date < NOW() AND EXISTS (SELECT 1 FROM incidents WHERE incidents.id = capas.incident_id AND incidents.site_id=$2)", tid, sid)
             s_closed_inc = await db.fetchval(
                 "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND site_id=$2 AND status='closed'", tid, sid)
+            s_recordable = await db.fetchval(
+                "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND site_id=$2 AND incident_type IN ('injury','illness')", tid, sid)
             s_dart_cases = await db.fetchval(
                 "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1 AND site_id=$2 AND incident_type='injury' AND severity IN ('high','critical')", tid, sid)
-            s_hours = (site_row["employee_count"] or 0) * 2000 * 0.5
-            s_trir = round((s_total_inc / max(s_hours, 1)) * 200000, 2) if s_hours > 0 else 0
+            s_closed_capas = await db.fetchval(
+                "SELECT COUNT(*) FROM capas WHERE tenant_id=$1 AND status = 'closed' AND EXISTS (SELECT 1 FROM incidents WHERE incidents.id = capas.incident_id AND incidents.site_id=$2)", tid, sid)
+            # Hours worked: employees * 2000 annual hours * (months elapsed / 12)
+            # ~6 months of data = 0.25 scale for Q1 reporting period
+            s_hours = (site_row["employee_count"] or 0) * 2000 * 0.25
+            # TRIR uses OSHA recordable injuries only, not all incidents
+            s_trir = round((s_recordable / max(s_hours, 1)) * 200000, 2) if s_hours > 0 else 0
             s_dart = round((s_dart_cases / max(s_hours, 1)) * 200000, 2) if s_hours > 0 else 0
 
             s_nm_ratio = f"{int(s_near_miss / max(s_total_inc, 1) * 100)}%"
-            s_closure_rate = f"{int(s_closed_inc / max(s_total_capas, 1) * 100)}%" if s_total_capas > 0 else "N/A"
+            # CAPA closure = closed CAPAs / total CAPAs (not incidents / CAPAs)
+            s_closure_rate = f"{int(s_closed_capas / max(s_total_capas, 1) * 100)}%" if s_total_capas > 0 else "N/A"
 
             # Simple site-level audit score
             s_inv_score = int((s_closed_inc / max(s_total_inc, 1)) * 100)
@@ -257,8 +265,8 @@ async def public_analysis(response: Response, cache_bust: str = ""):
             "SELECT COUNT(*) FROM incidents WHERE tenant_id=$1", tid)
 
         # Standard OSHA calculations (annualized, 200,000 hours = 100 FTE)
-        # Assume 2000 hours/employee/year, scale to current period (6 months)
-        hours_worked = total_employees * 2000 * 0.5  # 6 months of data
+        # Assume 2000 hours/employee/year, scale to Q1 (~3 months = 0.25)
+        hours_worked = total_employees * 2000 * 0.25  # Q1 YTD
         trir = round((total_recordable / max(hours_worked, 1)) * 200000, 2) if hours_worked > 0 else 0
         dart_rate = round((total_dart_cases / max(hours_worked, 1)) * 200000, 2) if hours_worked > 0 else 0
         severity_rate = round((total_injuries_all / max(hours_worked, 1)) * 200000, 2) if hours_worked > 0 else 0
