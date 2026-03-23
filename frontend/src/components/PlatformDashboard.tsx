@@ -12,14 +12,25 @@ interface Tenant {
   brand_color_primary: string | null;
   brand_color_accent: string | null;
   created_at: string | null;
+  partner_id: string | null;
+  partner_name: string;
   users: number;
   sites: number;
   incidents: number;
   status: string;
 }
 
+interface Partner {
+  id: string;
+  name: string;
+  brand_name: string;
+  tenant_count: number;
+  user_count: number;
+}
+
 interface PlatformMetrics {
   total_tenants: number;
+  total_partners: number;
   total_users: number;
   total_incidents: number;
   total_sites: number;
@@ -37,19 +48,22 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
   const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", slug: "", industry: "general_manufacturing" });
+  const [createForm, setCreateForm] = useState({ name: "", slug: "", industry: "general_manufacturing", partner_id: "" });
   const [creating, setCreating] = useState(false);
   const [createResult, setCreateResult] = useState<{ users: { email: string; password: string; role: string }[] } | null>(null);
+  const [partners, setPartners] = useState<Partner[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
-      const [t, m] = await Promise.all([
+      const [t, m, p] = await Promise.all([
         api<Tenant[]>("/api/platform/tenants", { token }),
         api<PlatformMetrics>("/api/platform/metrics", { token }),
+        api<Partner[]>("/api/platform/partners", { token }),
       ]);
       setTenants(t);
       setMetrics(m);
+      setPartners(p);
     } catch (err) {
       console.error("Failed to load platform data:", err);
     } finally {
@@ -75,9 +89,10 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
     e.preventDefault();
     setCreating(true);
     try {
+      const body = { ...createForm, partner_id: createForm.partner_id || null };
       const res = await api<{ id: string; name: string; slug: string; users: { email: string; password: string; role: string }[] }>(
         "/api/platform/tenants",
-        { method: "POST", token, body: createForm },
+        { method: "POST", token, body },
       );
       setCreateResult(res);
       fetchData();
@@ -146,9 +161,9 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
         {metrics && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             {[
+              { label: "Partners", value: metrics.total_partners, color: "text-purple-400" },
               { label: "Tenants", value: metrics.total_tenants, color: "text-blue-400" },
               { label: "Users", value: metrics.total_users, color: "text-green-400" },
-              { label: "Total Incidents", value: metrics.total_incidents, color: "text-yellow-400" },
               { label: "Platform Health", value: metrics.platform_health.toUpperCase(), color: "text-emerald-400" },
             ].map((m) => (
               <div key={m.label} className="bg-[#0d1220] border border-[#1e293b] rounded-xl p-4">
@@ -164,7 +179,7 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
           <div className="px-6 py-4 border-b border-[#1e293b] flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">Tenants</h2>
             <button
-              onClick={() => { setShowCreate(true); setCreateResult(null); setCreateForm({ name: "", slug: "", industry: "general_manufacturing" }); }}
+              onClick={() => { setShowCreate(true); setCreateResult(null); setCreateForm({ name: "", slug: "", industry: "general_manufacturing", partner_id: "" }); }}
               className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -179,7 +194,7 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
               <thead>
                 <tr className="text-xs text-gray-500 border-b border-[#1e293b]">
                   <th className="text-left px-6 py-3 font-medium">Tenant Name</th>
-                  <th className="text-left px-4 py-3 font-medium">Slug</th>
+                  <th className="text-left px-4 py-3 font-medium">Partner</th>
                   <th className="text-center px-4 py-3 font-medium">Sites</th>
                   <th className="text-center px-4 py-3 font-medium">Users</th>
                   <th className="text-center px-4 py-3 font-medium">Incidents</th>
@@ -198,7 +213,7 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
                         <span className="text-sm font-medium text-white">{t.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-400">{t.slug}</td>
+                    <td className="px-4 py-4 text-sm text-gray-400">{t.partner_name}</td>
                     <td className="px-4 py-4 text-sm text-gray-300 text-center">{t.sites}</td>
                     <td className="px-4 py-4 text-sm text-gray-300 text-center">{t.users}</td>
                     <td className="px-4 py-4 text-sm text-gray-300 text-center">{t.incidents}</td>
@@ -309,6 +324,19 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
                       <option value="medical_device">Medical Device</option>
                       <option value="chemical">Chemical</option>
                       <option value="general_manufacturing">General Manufacturing</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Assign to Partner</label>
+                    <select
+                      value={createForm.partner_id}
+                      onChange={(e) => setCreateForm({ ...createForm, partner_id: e.target.value })}
+                      className="w-full bg-[#1e293b] border border-[#334155] text-white text-sm rounded-lg px-3 py-2.5 focus:border-green-500 focus:outline-none"
+                    >
+                      <option value="">Direct (No Partner)</option>
+                      {partners.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
                     </select>
                   </div>
                 </div>

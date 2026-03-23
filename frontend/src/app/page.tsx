@@ -5,9 +5,11 @@ import { api } from "@/lib/api";
 import { setAuth, getToken, clearAuth } from "@/lib/auth";
 import Dashboard from "@/components/Dashboard";
 import PlatformDashboard from "@/components/PlatformDashboard";
+import PartnerDashboard from "@/components/PartnerDashboard";
 
-const ADMIN_TOKEN_KEY = "ehs_admin_token";
+const RETURN_TOKEN_KEY = "ehs_return_token";
 const VIEWING_TENANT_KEY = "ehs_viewing_tenant";
+const RETURN_VIEW_KEY = "ehs_return_view"; // "platform" or "partner"
 
 export default function Home() {
   const [token, setToken] = useState<string | null>(
@@ -19,10 +21,11 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [autoLogging, setAutoLogging] = useState(false);
   const [manualLogout, setManualLogout] = useState(false);
-  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  // "platform" | "partner" | "tenant" | null
+  const [viewType, setViewType] = useState<string | null>(null);
   const [viewingTenant, setViewingTenant] = useState<string | null>(null);
 
-  // Check if we have a stored admin token (login-as mode)
+  // Restore viewing-as state from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(VIEWING_TENANT_KEY);
@@ -30,25 +33,31 @@ export default function Home() {
     }
   }, []);
 
-  // Detect platform admin after login
+  // Detect user type after login
   useEffect(() => {
     if (!token) return;
-    // Skip platform admin check if viewing as tenant
-    if (localStorage.getItem(ADMIN_TOKEN_KEY)) {
-      setIsPlatformAdmin(false);
+    // If viewing-as tenant, skip detection
+    if (localStorage.getItem(RETURN_TOKEN_KEY)) {
+      setViewType("tenant");
       return;
     }
-    api<{ is_platform_admin?: boolean }>("/api/auth/me", { token })
+    api<{ is_platform_admin?: boolean; role?: string; partner_id?: string }>("/api/auth/me", { token })
       .then((user) => {
-        setIsPlatformAdmin(!!user.is_platform_admin);
+        if (user.is_platform_admin) {
+          setViewType("platform");
+        } else if (user.role === "partner" && user.partner_id) {
+          setViewType("partner");
+        } else {
+          setViewType("tenant");
+        }
       })
       .catch(() => {});
   }, [token]);
 
-  // Auto-login: if no token and not manually logged out, auto-login with demo creds
+  // Auto-login with demo creds
   useEffect(() => {
-    if (token) return; // Already logged in
-    if (manualLogout) return; // User explicitly logged out, show form
+    if (token) return;
+    if (manualLogout) return;
     setAutoLogging(true);
     api<{ token: string; user_id: string }>("/api/auth/login", {
       method: "POST",
@@ -59,49 +68,67 @@ export default function Home() {
         setToken(res.token);
       })
       .catch(() => {
-        setAutoLogging(false); // Fall back to manual login form
+        setAutoLogging(false);
       });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLogout = () => {
     clearAuth();
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem(RETURN_TOKEN_KEY);
     localStorage.removeItem(VIEWING_TENANT_KEY);
+    localStorage.removeItem(RETURN_VIEW_KEY);
     setToken(null);
-    setIsPlatformAdmin(false);
+    setViewType(null);
     setViewingTenant(null);
     setManualLogout(true);
   };
 
   const handleLoginAs = (tenantToken: string, tenantName: string) => {
-    // Store current admin token so we can return
     if (token) {
-      localStorage.setItem(ADMIN_TOKEN_KEY, token);
+      localStorage.setItem(RETURN_TOKEN_KEY, token);
       localStorage.setItem(VIEWING_TENANT_KEY, tenantName);
+      localStorage.setItem(RETURN_VIEW_KEY, viewType || "platform");
     }
     setAuth(tenantToken, "");
     setToken(tenantToken);
-    setIsPlatformAdmin(false);
+    setViewType("tenant");
     setViewingTenant(tenantName);
   };
 
   const handleReturnToAdmin = () => {
-    const adminToken = localStorage.getItem(ADMIN_TOKEN_KEY);
-    if (adminToken) {
-      setAuth(adminToken, "");
-      setToken(adminToken);
-      setIsPlatformAdmin(true);
+    const returnToken = localStorage.getItem(RETURN_TOKEN_KEY);
+    const returnView = localStorage.getItem(RETURN_VIEW_KEY) || "platform";
+    if (returnToken) {
+      setAuth(returnToken, "");
+      setToken(returnToken);
+      setViewType(returnView);
       setViewingTenant(null);
-      localStorage.removeItem(ADMIN_TOKEN_KEY);
+      localStorage.removeItem(RETURN_TOKEN_KEY);
       localStorage.removeItem(VIEWING_TENANT_KEY);
+      localStorage.removeItem(RETURN_VIEW_KEY);
     }
   };
 
-  if (token) {
+  const returnLabel = localStorage.getItem(RETURN_VIEW_KEY) === "partner"
+    ? "Return to Dashboard"
+    : "Return to Platform Admin";
+
+  if (token && viewType) {
     // Platform admin view
-    if (isPlatformAdmin && !viewingTenant) {
+    if (viewType === "platform") {
       return (
         <PlatformDashboard
+          token={token}
+          onLogout={handleLogout}
+          onLoginAs={handleLoginAs}
+        />
+      );
+    }
+
+    // Partner view
+    if (viewType === "partner") {
+      return (
+        <PartnerDashboard
           token={token}
           onLogout={handleLogout}
           onLoginAs={handleLoginAs}
@@ -112,7 +139,6 @@ export default function Home() {
     // Tenant view (normal or login-as)
     return (
       <div className="flex flex-col h-screen">
-        {/* Return to Admin banner when viewing as tenant */}
         {viewingTenant && (
           <div className="bg-blue-900/80 border-b border-blue-700 px-4 py-2 flex items-center justify-between text-sm z-50">
             <span className="text-blue-200">
@@ -125,21 +151,18 @@ export default function Home() {
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
               </svg>
-              Return to Platform Admin
+              {returnLabel}
             </button>
           </div>
         )}
         <div className="flex-1 overflow-hidden">
-          <Dashboard
-            token={token}
-            onLogout={handleLogout}
-          />
+          <Dashboard token={token} onLogout={handleLogout} />
         </div>
       </div>
     );
   }
 
-  // Show loading screen during auto-login
+  // Auto-login loading
   if (autoLogging) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
@@ -158,14 +181,18 @@ export default function Home() {
     setLoading(true);
     setError("");
     try {
-      const res = await api<{ token: string; user_id: string; is_platform_admin?: boolean }>("/api/auth/login", {
+      const res = await api<{ token: string; user_id: string; is_platform_admin?: boolean; role?: string; partner_id?: string | null }>("/api/auth/login", {
         method: "POST",
         body: { email, password },
       });
       setAuth(res.token, res.user_id);
       setToken(res.token);
       if (res.is_platform_admin) {
-        setIsPlatformAdmin(true);
+        setViewType("platform");
+      } else if (res.role === "partner" && res.partner_id) {
+        setViewType("partner");
+      } else {
+        setViewType("tenant");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

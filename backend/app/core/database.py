@@ -172,6 +172,29 @@ DO $$ BEGIN
 EXCEPTION WHEN others THEN NULL;
 END $$;
 
+-- Partners table (for reseller/consulting partners)
+CREATE TABLE IF NOT EXISTS partners (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    brand_name TEXT NOT NULL,
+    logo_url TEXT,
+    primary_color VARCHAR(7) DEFAULT '#1B2A4A',
+    accent_color VARCHAR(7) DEFAULT '#2ECC71',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add partner_id to tenants (NULL = direct ikigaiOS client)
+DO $$ BEGIN
+    ALTER TABLE tenants ADD COLUMN partner_id UUID REFERENCES partners(id);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Add partner_id to users (for partner role users)
+DO $$ BEGIN
+    ALTER TABLE users ADD COLUMN partner_id UUID REFERENCES partners(id);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
 -- Add branding columns to tenants
 DO $$ BEGIN
     ALTER TABLE tenants ADD COLUMN brand_name VARCHAR(100);

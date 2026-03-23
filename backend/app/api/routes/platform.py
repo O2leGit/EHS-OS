@@ -1,7 +1,7 @@
 """Platform admin endpoints for multi-tenant management.
 
 These endpoints are only accessible by users with is_platform_admin = true.
-They provide tenant CRUD, login-as, and platform-wide metrics.
+They provide tenant CRUD, partner CRUD, login-as, and platform-wide metrics.
 """
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -22,6 +22,8 @@ async def require_platform_admin(current_user: dict = Depends(get_current_user))
     return current_user
 
 
+# ── Tenant endpoints ──────────────────────────────────────────────────────────
+
 class TenantCreateRequest(BaseModel):
     name: str
     slug: str
@@ -29,14 +31,19 @@ class TenantCreateRequest(BaseModel):
     brand_color_primary: str = "#1B2A4A"
     brand_color_accent: str = "#2ECC71"
     logo_url: Optional[str] = None
+    partner_id: Optional[str] = None
 
 
 @router.get("/tenants")
 async def list_tenants(db=Depends(get_db), admin=Depends(require_platform_admin)):
-    """List all tenants with summary metrics."""
+    """List all tenants with summary metrics and partner info."""
     tenants = await db.fetch(
-        """SELECT id, name, slug, brand_name, logo_url, brand_color_primary, brand_color_accent, created_at
-           FROM tenants ORDER BY created_at DESC"""
+        """SELECT t.id, t.name, t.slug, t.brand_name, t.logo_url,
+                  t.brand_color_primary, t.brand_color_accent, t.created_at, t.partner_id,
+                  p.name as partner_name
+           FROM tenants t
+           LEFT JOIN partners p ON t.partner_id = p.id
+           ORDER BY t.name"""
     )
     result = []
     for t in tenants:
@@ -53,6 +60,8 @@ async def list_tenants(db=Depends(get_db), admin=Depends(require_platform_admin)
             "brand_color_primary": t["brand_color_primary"],
             "brand_color_accent": t["brand_color_accent"],
             "created_at": t["created_at"].isoformat() if t["created_at"] else None,
+            "partner_id": str(t["partner_id"]) if t["partner_id"] else None,
+            "partner_name": t["partner_name"] or "Direct",
             "users": user_count,
             "sites": site_count,
             "incidents": incident_count,
@@ -70,13 +79,13 @@ async def create_tenant(body: TenantCreateRequest, db=Depends(get_db), admin=Dep
 
     tenant_id = str(uuid.uuid4())
     await db.execute(
-        """INSERT INTO tenants (id, name, slug, brand_name, logo_url, brand_color_primary, brand_color_accent)
-           VALUES ($1::uuid, $2, $3, $4, $5, $6, $7)""",
+        """INSERT INTO tenants (id, name, slug, brand_name, logo_url, brand_color_primary, brand_color_accent, partner_id)
+           VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8::uuid)""",
         tenant_id, body.name, body.slug, body.name, body.logo_url,
         body.brand_color_primary, body.brand_color_accent,
+        body.partner_id if body.partner_id else None,
     )
 
-    # Create default users for the tenant
     email_base = body.slug.replace("-", "")
     default_pw = hash_password("demo123")
     users_created = []
@@ -106,7 +115,10 @@ async def create_tenant(body: TenantCreateRequest, db=Depends(get_db), admin=Dep
 async def get_tenant(tenant_id: str, db=Depends(get_db), admin=Depends(require_platform_admin)):
     """Get tenant detail."""
     tenant = await db.fetchrow(
-        "SELECT id, name, slug, brand_name, logo_url, brand_color_primary, brand_color_accent, created_at FROM tenants WHERE id = $1::uuid",
+        """SELECT t.id, t.name, t.slug, t.brand_name, t.logo_url, t.brand_color_primary,
+                  t.brand_color_accent, t.created_at, t.partner_id, p.name as partner_name
+           FROM tenants t LEFT JOIN partners p ON t.partner_id = p.id
+           WHERE t.id = $1::uuid""",
         tenant_id,
     )
     if not tenant:
@@ -126,9 +138,8 @@ async def get_tenant(tenant_id: str, db=Depends(get_db), admin=Depends(require_p
         "name": tenant["name"],
         "slug": tenant["slug"],
         "brand_name": tenant["brand_name"],
-        "logo_url": tenant["logo_url"],
-        "brand_color_primary": tenant["brand_color_primary"],
-        "brand_color_accent": tenant["brand_color_accent"],
+        "partner_id": str(tenant["partner_id"]) if tenant["partner_id"] else None,
+        "partner_name": tenant["partner_name"] or "Direct",
         "created_at": tenant["created_at"].isoformat() if tenant["created_at"] else None,
         "users": [{"id": str(u["id"]), "email": u["email"], "full_name": u["full_name"], "role": u["role"]} for u in users],
         "sites": [{"id": str(s["id"]), "name": s["name"], "code": s["code"], "site_type": s["site_type"], "employee_count": s["employee_count"]} for s in sites],
@@ -145,7 +156,6 @@ async def delete_tenant(tenant_id: str, db=Depends(get_db), admin=Depends(requir
         raise HTTPException(status_code=400, detail="Cannot delete the primary demo tenant")
 
     tid = tenant["id"]
-    # Clean up FK references
     for tbl in ["document_analyses", "chat_messages", "reports", "prompt_templates", "capas", "incidents", "documents", "sites", "users"]:
         try:
             await db.execute(f"DELETE FROM {tbl} WHERE tenant_id = $1", tid)
@@ -157,12 +167,11 @@ async def delete_tenant(tenant_id: str, db=Depends(get_db), admin=Depends(requir
 
 @router.post("/tenants/{tenant_id}/login-as")
 async def login_as_tenant(tenant_id: str, db=Depends(get_db), admin=Depends(require_platform_admin)):
-    """Generate a JWT to view the app as a tenant admin. Used for demos."""
+    """Generate a JWT to view the app as a tenant admin."""
     tenant = await db.fetchrow("SELECT id, name, slug FROM tenants WHERE id = $1::uuid", tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    # Find the tenant's admin user
     tenant_admin = await db.fetchrow(
         "SELECT id, role FROM users WHERE tenant_id = $1::uuid AND role = 'admin' ORDER BY created_at LIMIT 1",
         tenant["id"],
@@ -174,25 +183,80 @@ async def login_as_tenant(tenant_id: str, db=Depends(get_db), admin=Depends(requ
         user_id=str(tenant_admin["id"]),
         tenant_id=str(tenant["id"]),
         role=tenant_admin["role"],
-        is_platform_admin=False,
     )
-    return {
-        "token": token,
-        "tenant_name": tenant["name"],
-        "tenant_slug": tenant["slug"],
-    }
+    return {"token": token, "tenant_name": tenant["name"], "tenant_slug": tenant["slug"]}
 
+
+# ── Partner endpoints ─────────────────────────────────────────────────────────
+
+class PartnerCreateRequest(BaseModel):
+    name: str
+    brand_name: str
+    logo_url: Optional[str] = None
+    primary_color: str = "#1B2A4A"
+    accent_color: str = "#2ECC71"
+
+
+@router.get("/partners")
+async def list_partners(db=Depends(get_db), admin=Depends(require_platform_admin)):
+    """List all partners with tenant counts."""
+    partners = await db.fetch("SELECT id, name, brand_name, logo_url, created_at FROM partners ORDER BY name")
+    result = []
+    for p in partners:
+        tenant_count = await db.fetchval("SELECT COUNT(*) FROM tenants WHERE partner_id = $1", p["id"])
+        user_count = await db.fetchval("SELECT COUNT(*) FROM users WHERE partner_id = $1", p["id"])
+        result.append({
+            "id": str(p["id"]),
+            "name": p["name"],
+            "brand_name": p["brand_name"],
+            "logo_url": p["logo_url"],
+            "created_at": p["created_at"].isoformat() if p["created_at"] else None,
+            "tenant_count": tenant_count,
+            "user_count": user_count,
+        })
+    return result
+
+
+@router.post("/partners")
+async def create_partner(body: PartnerCreateRequest, db=Depends(get_db), admin=Depends(require_platform_admin)):
+    """Create a new partner organization."""
+    pid = str(uuid.uuid4())
+    await db.execute(
+        """INSERT INTO partners (id, name, brand_name, logo_url, primary_color, accent_color)
+           VALUES ($1::uuid, $2, $3, $4, $5, $6)""",
+        pid, body.name, body.brand_name, body.logo_url, body.primary_color, body.accent_color,
+    )
+    return {"id": pid, "name": body.name, "brand_name": body.brand_name}
+
+
+@router.patch("/partners/{partner_id}")
+async def update_partner(partner_id: str, body: PartnerCreateRequest, db=Depends(get_db), admin=Depends(require_platform_admin)):
+    """Update a partner."""
+    existing = await db.fetchrow("SELECT id FROM partners WHERE id = $1::uuid", partner_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    await db.execute(
+        """UPDATE partners SET name=$2, brand_name=$3, logo_url=$4, primary_color=$5, accent_color=$6
+           WHERE id = $1::uuid""",
+        partner_id, body.name, body.brand_name, body.logo_url, body.primary_color, body.accent_color,
+    )
+    return {"id": partner_id, "name": body.name}
+
+
+# ── Metrics ───────────────────────────────────────────────────────────────────
 
 @router.get("/metrics")
 async def platform_metrics(db=Depends(get_db), admin=Depends(require_platform_admin)):
     """Platform-wide metrics."""
     total_tenants = await db.fetchval("SELECT COUNT(*) FROM tenants")
-    total_users = await db.fetchval("SELECT COUNT(*) FROM users WHERE is_platform_admin IS NOT TRUE")
+    total_partners = await db.fetchval("SELECT COUNT(*) FROM partners")
+    total_users = await db.fetchval("SELECT COUNT(*) FROM users WHERE is_platform_admin IS NOT TRUE AND role != 'partner'")
     total_incidents = await db.fetchval("SELECT COUNT(*) FROM incidents")
     total_sites = await db.fetchval("SELECT COUNT(*) FROM sites WHERE is_active = true")
 
     return {
         "total_tenants": total_tenants,
+        "total_partners": total_partners,
         "total_users": total_users,
         "total_incidents": total_incidents,
         "total_sites": total_sites,

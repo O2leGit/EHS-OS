@@ -723,11 +723,11 @@ async def reseed_demo_data(db):
 
     # =========================================================================
     # Platform Admin Accounts (tenant_id = NULL, is_platform_admin = true)
+    # Only Chris and Greg are platform admins
     # =========================================================================
     platform_admins = [
         ("chris@cotoole.com", "Chris OToole"),
         ("greg@scaleos.com", "Greg Serio"),
-        ("jen@parzyconsulting.com", "Jen Parzacone"),
     ]
     for email, name in platform_admins:
         existing = await db.fetchrow("SELECT id FROM users WHERE email = $1", email)
@@ -739,12 +739,44 @@ async def reseed_demo_data(db):
             )
             print(f"Created platform admin: {email}")
         else:
-            # Ensure flags are correct even if user exists
             await db.execute(
-                "UPDATE users SET is_platform_admin = true, role = 'platform_admin', tenant_id = NULL WHERE email = $1",
+                "UPDATE users SET is_platform_admin = true, role = 'platform_admin', tenant_id = NULL, partner_id = NULL WHERE email = $1",
                 email,
             )
     print("Platform admin accounts ready.")
+
+    # =========================================================================
+    # Partner: Parzy Consulting
+    # =========================================================================
+    parzy = await db.fetchrow("SELECT id FROM partners WHERE name = 'Parzy Consulting'")
+    if not parzy:
+        parzy = await db.fetchrow(
+            """INSERT INTO partners (name, brand_name, logo_url)
+               VALUES ('Parzy Consulting', 'Parzy Consulting',
+                       'https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_400,h_114,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png')
+               RETURNING id"""
+        )
+        print("Created partner: Parzy Consulting")
+    parzy_id = parzy["id"]
+
+    # Assign Bio-Techne tenant to Parzy Consulting partner
+    await db.execute("UPDATE tenants SET partner_id = $1 WHERE slug = 'bio-techne'", parzy_id)
+
+    # Jen as partner user (NOT platform admin)
+    jen = await db.fetchrow("SELECT id FROM users WHERE email = 'jen@parzyconsulting.com'")
+    if not jen:
+        await db.execute(
+            """INSERT INTO users (email, password_hash, full_name, role, tenant_id, is_platform_admin, partner_id)
+               VALUES ($1, $2, 'Jen Parzacone', 'partner', NULL, false, $3)""",
+            "jen@parzyconsulting.com", hash_password("demo123"), parzy_id,
+        )
+        print("Created partner user: jen@parzyconsulting.com")
+    else:
+        await db.execute(
+            "UPDATE users SET role = 'partner', is_platform_admin = false, tenant_id = NULL, partner_id = $1 WHERE email = 'jen@parzyconsulting.com'",
+            parzy_id,
+        )
+    print("Partner accounts ready.")
 
 
 if __name__ == "__main__":
