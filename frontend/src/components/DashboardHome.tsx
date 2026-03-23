@@ -61,6 +61,11 @@ interface Summary {
   open_capas: number;
   overdue_capas: number;
   framework_coverage_pct: number;
+  trends?: {
+    incidents_monthly: number[];
+    capas_opened_monthly: number[];
+    near_miss_monthly: number[];
+  };
 }
 
 interface AuditFactor {
@@ -292,6 +297,41 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
   const closedCapas = capaStatus.find((s) => s.status === "closed")?.count ?? 0;
   const closureRate = totalCapas > 0 ? Math.round((closedCapas / totalCapas) * 100) : 0;
 
+  // Build sparkline SVG from trend data
+  const buildSparkline = (data: number[], downIsGood: boolean) => {
+    if (!data || data.length < 2) return null;
+    const max = Math.max(...data, 1);
+    const min = Math.min(...data, 0);
+    const range = max - min || 1;
+    const w = 60;
+    const h = 20;
+    const pad = 2;
+    const points = data
+      .map((v, i) => {
+        const x = pad + (i / (data.length - 1)) * (w - pad * 2);
+        const y = pad + (1 - (v - min) / range) * (h - pad * 2);
+        return `${x},${y}`;
+      })
+      .join(" ");
+    const trending = data[data.length - 1] - data[0];
+    const trendingUp = trending > 0;
+    const color = downIsGood
+      ? trendingUp ? "#ef4444" : "#22c55e"
+      : trendingUp ? "#22c55e" : "#ef4444";
+    return (
+      <svg width={w} height={h} className="mt-1 opacity-80">
+        <polyline
+          points={points}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  };
+
   const metrics = [
     {
       label: "Incidents MTD",
@@ -300,6 +340,8 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
       bgColor: "bg-blue-900/20",
       borderColor: "border-blue-800",
       navigateTo: "incidents",
+      trendData: summary?.trends?.incidents_monthly,
+      downIsGood: true,
     },
     {
       label: "Open CAPAs",
@@ -308,6 +350,8 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
       bgColor: "bg-amber-900/20",
       borderColor: "border-amber-800",
       navigateTo: "capas",
+      trendData: summary?.trends?.capas_opened_monthly,
+      downIsGood: true,
     },
     {
       label: "Overdue CAPAs",
@@ -316,6 +360,8 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
       bgColor: summary?.overdue_capas ? "bg-red-900/20" : "bg-green-900/20",
       borderColor: summary?.overdue_capas ? "border-red-800" : "border-green-800",
       navigateTo: "capas",
+      trendData: summary?.trends?.near_miss_monthly,
+      downIsGood: true,
     },
   ];
 
@@ -533,7 +579,10 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
             className={`card-hover ${m.bgColor} border ${m.borderColor} cursor-pointer hover:ring-2 hover:ring-cyan-500/50 transition-all`}
           >
             <p className="text-sm text-gray-400">{m.label}</p>
-            <p className={`text-3xl font-bold mt-1 ${m.color}`}>{m.value}</p>
+            <div className="flex items-end justify-between">
+              <p className={`text-3xl font-bold mt-1 ${m.color}`}>{m.value}</p>
+              {m.trendData && m.trendData.length >= 2 && buildSparkline(m.trendData, m.downIsGood)}
+            </div>
           </div>
         ))}
         {/* Audit Readiness Gauge Card */}

@@ -42,11 +42,68 @@ async def dashboard_summary(site_id: str = None, db=Depends(get_db), current_use
     )
     coverage_pct = round((covered / total_categories) * 100) if total_categories > 0 else 0
 
+    # Monthly trends for sparklines (last 6 months including current)
+    if site_id:
+        incidents_monthly_rows = await db.fetch(
+            """SELECT date_trunc('month', created_at)::date as month, COUNT(*) as count
+               FROM incidents WHERE tenant_id = $1::uuid AND site_id = $2::uuid
+               AND created_at >= date_trunc('month', NOW()) - INTERVAL '5 months'
+               GROUP BY month ORDER BY month""",
+            tid, site_id,
+        )
+        capas_monthly_rows = await db.fetch(
+            """SELECT date_trunc('month', created_at)::date as month, COUNT(*) as count
+               FROM capas WHERE tenant_id = $1::uuid AND site_id = $2::uuid
+               AND created_at >= date_trunc('month', NOW()) - INTERVAL '5 months'
+               GROUP BY month ORDER BY month""",
+            tid, site_id,
+        )
+        near_miss_monthly_rows = await db.fetch(
+            """SELECT date_trunc('month', created_at)::date as month, COUNT(*) as count
+               FROM incidents WHERE tenant_id = $1::uuid AND site_id = $2::uuid
+               AND incident_type = 'near_miss'
+               AND created_at >= date_trunc('month', NOW()) - INTERVAL '5 months'
+               GROUP BY month ORDER BY month""",
+            tid, site_id,
+        )
+    else:
+        incidents_monthly_rows = await db.fetch(
+            """SELECT date_trunc('month', created_at)::date as month, COUNT(*) as count
+               FROM incidents WHERE tenant_id = $1::uuid
+               AND created_at >= date_trunc('month', NOW()) - INTERVAL '5 months'
+               GROUP BY month ORDER BY month""",
+            tid,
+        )
+        capas_monthly_rows = await db.fetch(
+            """SELECT date_trunc('month', created_at)::date as month, COUNT(*) as count
+               FROM capas WHERE tenant_id = $1::uuid
+               AND created_at >= date_trunc('month', NOW()) - INTERVAL '5 months'
+               GROUP BY month ORDER BY month""",
+            tid,
+        )
+        near_miss_monthly_rows = await db.fetch(
+            """SELECT date_trunc('month', created_at)::date as month, COUNT(*) as count
+               FROM incidents WHERE tenant_id = $1::uuid
+               AND incident_type = 'near_miss'
+               AND created_at >= date_trunc('month', NOW()) - INTERVAL '5 months'
+               GROUP BY month ORDER BY month""",
+            tid,
+        )
+
+    incidents_monthly = [r["count"] for r in incidents_monthly_rows]
+    capas_monthly = [r["count"] for r in capas_monthly_rows]
+    near_miss_monthly = [r["count"] for r in near_miss_monthly_rows]
+
     return {
         "incidents_mtd": incidents_mtd,
         "open_capas": open_capas,
         "overdue_capas": overdue_capas,
         "framework_coverage_pct": coverage_pct,
+        "trends": {
+            "incidents_monthly": incidents_monthly,
+            "capas_opened_monthly": capas_monthly,
+            "near_miss_monthly": near_miss_monthly,
+        },
     }
 
 
