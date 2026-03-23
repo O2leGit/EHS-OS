@@ -18,9 +18,12 @@ import InspectionsPage from "./InspectionsPage";
 export interface TenantBranding {
   brand_name: string;
   logo_url: string | null;
+  brand_color_primary?: string | null;
+  brand_color_accent?: string | null;
   partner_name: string | null;
   partner_logo_url: string | null;
   tenant_name?: string;
+  pricing_tier?: string;
 }
 
 interface DashboardProps {
@@ -57,7 +60,14 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       .then(setSites)
       .catch(console.error);
     api<TenantBranding>("/api/tenant/branding", { token })
-      .then(setBranding)
+      .then((b) => {
+        setBranding(b);
+        // Set CSS custom properties for white-label theming
+        const accent = b.brand_color_accent || "#2ECC71";
+        const primary = b.brand_color_primary || "#1B2A4A";
+        document.documentElement.style.setProperty("--brand-color", accent);
+        document.documentElement.style.setProperty("--brand-color-primary", primary);
+      })
       .catch(console.error);
   }, [token, onLogout]);
 
@@ -119,7 +129,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       {!chatOpen && (
         <button
           onClick={() => setChatOpen(true)}
-          className="fixed right-4 bottom-4 bg-safe hover:bg-green-600 text-white rounded-full shadow-lg z-50 transition-colors flex items-center gap-2 px-4 py-3"
+          className="fixed right-4 bottom-4 text-white rounded-full shadow-lg z-50 transition-colors flex items-center gap-2 px-4 py-3"
+          style={{ backgroundColor: "var(--brand-color, #2ECC71)" }}
           title="Ask an EHS AI Assistant"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

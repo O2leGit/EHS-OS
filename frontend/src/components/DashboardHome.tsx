@@ -19,9 +19,12 @@ import {
 interface TenantBranding {
   brand_name: string;
   logo_url: string | null;
+  brand_color_primary?: string | null;
+  brand_color_accent?: string | null;
   partner_name: string | null;
   partner_logo_url: string | null;
   tenant_name?: string;
+  pricing_tier?: string;
 }
 
 interface DashboardHomeProps {
@@ -223,6 +226,7 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
   const [auditReadiness, setAuditReadiness] = useState<AuditReadiness | null>(null);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [globalMetrics, setGlobalMetrics] = useState<any>(null);
+  const [showRoiMethodology, setShowRoiMethodology] = useState(false);
   const [alerts, setAlerts] = useState<{id: string; incident_number: string; title: string; severity: string; location: string; created_at: string}[]>([]);
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
@@ -296,6 +300,27 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
   const totalCapas = capaStatus.reduce((sum, s) => sum + s.count, 0);
   const closedCapas = capaStatus.find((s) => s.status === "closed")?.count ?? 0;
   const closureRate = totalCapas > 0 ? Math.round((closedCapas / totalCapas) * 100) : 0;
+
+  // ROI Calculator values
+  const COST_PER_INCIDENT = 42000;
+  const OSHA_FINE_PER_VIOLATION = 16131;
+  const REDUCTION_TARGET = 0.30;
+  const PLATFORM_ANNUAL_COST = 54000;
+  // Use globalMetrics total_incidents if available, otherwise annualize incidents_mtd
+  const annualizedIncidents = globalMetrics?.global?.total_incidents
+    ? globalMetrics.global.total_incidents
+    : (summary?.incidents_mtd ?? 0) * 12;
+  const riskExposure = annualizedIncidents * COST_PER_INCIDENT;
+  const projectedSavings = riskExposure * REDUCTION_TARGET;
+  const netSavings = projectedSavings - PLATFORM_ANNUAL_COST;
+  const roiPercent = PLATFORM_ANNUAL_COST > 0 ? Math.round((netSavings / PLATFORM_ANNUAL_COST) * 100) : 0;
+  const savingsBarPct = riskExposure > 0 ? Math.min((projectedSavings / riskExposure) * 100, 100) : 0;
+
+  const formatDollar = (n: number) => {
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `$${Math.round(n).toLocaleString()}`;
+    return `$${n}`;
+  };
 
   // Build sparkline SVG from trend data
   const buildSparkline = (data: number[], downIsGood: boolean) => {
@@ -756,16 +781,125 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
                   ))}
                   {/* Global total row */}
                   <tr className="bg-navy-700/30 font-medium">
-                    <td className="py-2.5 px-2 text-safe">Global Total</td>
+                    <td className="py-2.5 px-2" style={{ color: "var(--brand-color, #2ECC71)" }}>Global Total</td>
                     <td className="text-center text-white py-2.5 px-2">{globalMetrics.global.total_employees}</td>
                     <td className="text-center text-white py-2.5 px-2">{globalMetrics.global.total_incidents}</td>
-                    <td className="text-center text-safe py-2.5 px-2">{globalMetrics.global.trir}</td>
-                    <td className="text-center text-safe py-2.5 px-2">{globalMetrics.global.dart}</td>
-                    <td className="text-center text-safe py-2.5 px-2">{globalMetrics.global.near_miss_reporting_pct}%</td>
-                    <td className="text-center text-safe py-2.5 px-2">{globalMetrics.global.investigation_closure_pct}%</td>
+                    <td className="text-center py-2.5 px-2" style={{ color: "var(--brand-color, #2ECC71)" }}>{globalMetrics.global.trir}</td>
+                    <td className="text-center py-2.5 px-2" style={{ color: "var(--brand-color, #2ECC71)" }}>{globalMetrics.global.dart}</td>
+                    <td className="text-center py-2.5 px-2" style={{ color: "var(--brand-color, #2ECC71)" }}>{globalMetrics.global.near_miss_reporting_pct}%</td>
+                    <td className="text-center py-2.5 px-2" style={{ color: "var(--brand-color, #2ECC71)" }}>{globalMetrics.global.investigation_closure_pct}%</td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Estimated Annual ROI Card */}
+      {annualizedIncidents > 0 && (
+        <div className="mb-8">
+          <div className="bg-gradient-to-br from-navy-800 via-navy-800 to-emerald-950/30 rounded-xl border border-emerald-800/40 p-6 relative overflow-hidden">
+            {/* Subtle gradient accent line at top */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-500" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-900/50 border border-emerald-700/50 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23" />
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold text-sm">Estimated Annual ROI</h3>
+                  <p className="text-xs text-gray-400">AI-driven EHS platform impact projection</p>
+                </div>
+              </div>
+              <div className="relative">
+                <button
+                  onClick={() => setShowRoiMethodology(!showRoiMethodology)}
+                  className="text-xs text-emerald-400/70 hover:text-emerald-400 underline underline-offset-2 transition-colors"
+                >
+                  Methodology
+                </button>
+                {showRoiMethodology && (
+                  <div className="absolute right-0 top-7 z-20 w-80 bg-navy-900 border border-navy-600 rounded-lg p-4 shadow-2xl">
+                    <p className="text-xs text-gray-300 leading-relaxed">
+                      Based on BLS average cost per recordable incident ($42,000 including workers comp + lost productivity) and a 30% AI-driven incident reduction target. Platform cost assumes Advanced tier at $4,500/mo. OSHA serious violation fine average is $16,131 (2024). Near-miss reporting improvements of 40-60% correlate with 25% fewer injuries.
+                    </p>
+                    <button
+                      onClick={() => setShowRoiMethodology(false)}
+                      className="text-xs text-gray-500 hover:text-gray-300 mt-2 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Three key numbers */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              {/* Current Risk Exposure */}
+              <div className="bg-red-950/30 border border-red-800/30 rounded-lg p-4">
+                <p className="text-xs text-red-400/80 font-medium uppercase tracking-wider mb-1">Current Risk Exposure</p>
+                <p className="text-2xl font-bold text-red-300">{formatDollar(riskExposure)}</p>
+                <p className="text-xs text-gray-500 mt-1">{annualizedIncidents} incidents x $42,000 avg cost</p>
+              </div>
+
+              {/* Projected Savings */}
+              <div className="bg-emerald-950/30 border border-emerald-800/30 rounded-lg p-4">
+                <p className="text-xs text-emerald-400/80 font-medium uppercase tracking-wider mb-1">Projected Annual Savings</p>
+                <p className="text-2xl font-bold text-emerald-300">{formatDollar(projectedSavings)}</p>
+                <p className="text-xs text-gray-500 mt-1">30% reduction target = {Math.round(annualizedIncidents * REDUCTION_TARGET)} incidents avoided</p>
+              </div>
+
+              {/* Platform ROI */}
+              <div className="bg-cyan-950/30 border border-cyan-800/30 rounded-lg p-4">
+                <p className="text-xs text-cyan-400/80 font-medium uppercase tracking-wider mb-1">Platform ROI</p>
+                <p className={`text-2xl font-bold ${roiPercent > 0 ? "text-emerald-300" : "text-amber-300"}`}>{roiPercent > 0 ? "+" : ""}{roiPercent}%</p>
+                <p className="text-xs text-gray-500 mt-1">Net savings: {formatDollar(netSavings)} / yr</p>
+              </div>
+            </div>
+
+            {/* Risk Exposure vs Savings bar */}
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-400">Risk Reduction Impact</span>
+                <span className="text-xs text-emerald-400 font-medium">{Math.round(savingsBarPct)}% addressable</span>
+              </div>
+              <div className="w-full h-3 bg-red-900/40 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full transition-all duration-1000"
+                  style={{ width: `${savingsBarPct}%` }}
+                />
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[10px] text-gray-500">$0</span>
+                <span className="text-[10px] text-gray-500">{formatDollar(riskExposure)}</span>
+              </div>
+            </div>
+
+            {/* Additional metrics row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-navy-900/50 rounded-lg px-3 py-2">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Cost per Incident Avoided</p>
+                <p className="text-sm font-semibold text-white mt-0.5">$42,000</p>
+              </div>
+              <div className="bg-navy-900/50 rounded-lg px-3 py-2">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider">OSHA Fine Risk / Violation</p>
+                <p className="text-sm font-semibold text-white mt-0.5">${OSHA_FINE_PER_VIOLATION.toLocaleString()}</p>
+              </div>
+              <div className="bg-navy-900/50 rounded-lg px-3 py-2">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Target Incident Reduction</p>
+                <p className="text-sm font-semibold text-emerald-400 mt-0.5">30%</p>
+              </div>
+              <div className="bg-navy-900/50 rounded-lg px-3 py-2">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Platform Investment</p>
+                <p className="text-sm font-semibold text-white mt-0.5">${PLATFORM_ANNUAL_COST.toLocaleString()}/yr</p>
+              </div>
             </div>
           </div>
         </div>

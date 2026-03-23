@@ -41,8 +41,8 @@ async def seed():
 
         # Create tenant
         tenant = await db.fetchrow(
-            """INSERT INTO tenants (name, slug)
-               VALUES ('Bio-Techne', 'bio-techne') RETURNING id"""
+            """INSERT INTO tenants (name, slug, pricing_tier)
+               VALUES ('Bio-Techne', 'bio-techne', 'advanced') RETURNING id"""
         )
         tid = tenant["id"]
 
@@ -894,16 +894,23 @@ async def reseed_demo_data(db):
     parzy = await db.fetchrow("SELECT id FROM partners WHERE name = 'Parzy Consulting'")
     if not parzy:
         parzy = await db.fetchrow(
-            """INSERT INTO partners (name, brand_name, logo_url)
+            """INSERT INTO partners (name, brand_name, logo_url, primary_color, accent_color)
                VALUES ('Parzy Consulting', 'Parzy Consulting',
-                       'https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_400,h_114,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png')
+                       'https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_400,h_114,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png',
+                       '#1B2A4A', '#2563EB')
                RETURNING id"""
         )
         print("Created partner: Parzy Consulting")
     parzy_id = parzy["id"]
 
-    # Assign Bio-Techne tenant to Parzy Consulting partner
-    await db.execute("UPDATE tenants SET partner_id = $1 WHERE slug = 'bio-techne'", parzy_id)
+    # Ensure Parzy brand colors are set (idempotent update)
+    await db.execute(
+        "UPDATE partners SET primary_color = '#1B2A4A', accent_color = '#2563EB' WHERE id = $1 AND (accent_color IS NULL OR accent_color = '')",
+        parzy_id,
+    )
+
+    # Assign Bio-Techne tenant to Parzy Consulting partner + set brand accent
+    await db.execute("UPDATE tenants SET partner_id = $1, brand_color_accent = '#2563EB' WHERE slug = 'bio-techne'", parzy_id)
 
     # Jen as partner user (NOT platform admin)
     jen = await db.fetchrow("SELECT id FROM users WHERE email = 'jen@parzyconsulting.com'")

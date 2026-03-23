@@ -44,6 +44,7 @@ async def get_branding(db=Depends(get_db), current_user: dict = Depends(get_curr
     if tenant_id:
         row = await db.fetchrow(
             """SELECT t.name, t.brand_name, t.logo_url, t.brand_color_primary, t.brand_color_accent,
+                      t.pricing_tier,
                       p.name as partner_name, p.logo_url as partner_logo_url
                FROM tenants t
                LEFT JOIN partners p ON t.partner_id = p.id
@@ -58,6 +59,7 @@ async def get_branding(db=Depends(get_db), current_user: dict = Depends(get_curr
                 "brand_color_accent": row["brand_color_accent"] or "#2ECC71",
                 "view_type": "tenant",
                 "tenant_name": row["name"],
+                "pricing_tier": row["pricing_tier"] or "professional",
                 "partner_name": row["partner_name"],
                 "partner_logo_url": row["partner_logo_url"],
             }

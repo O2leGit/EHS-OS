@@ -212,6 +212,10 @@ DO $$ BEGIN
     ALTER TABLE tenants ADD COLUMN brand_color_accent VARCHAR(7) DEFAULT '#2ECC71';
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
+DO $$ BEGIN
+    ALTER TABLE tenants ADD COLUMN pricing_tier VARCHAR(20) DEFAULT 'professional';
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_documents_tenant ON documents(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_analyses_document ON document_analyses(document_id);

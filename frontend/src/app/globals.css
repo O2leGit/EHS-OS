@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --brand-color: #2ECC71;
+    --brand-color-primary: #1B2A4A;
+  }
   body {
     @apply bg-navy-950 text-gray-100;
   }
@@ -16,7 +20,11 @@
     @apply card hover:border-navy-600 transition-all duration-150 cursor-pointer;
   }
   .btn-primary {
-    @apply bg-safe hover:bg-green-600 text-white font-medium px-4 py-2 rounded-lg transition-colors;
+    @apply text-white font-medium px-4 py-2 rounded-lg transition-colors;
+    background-color: var(--brand-color, #2ECC71);
+  }
+  .btn-primary:hover {
+    filter: brightness(0.85);
   }
   .btn-secondary {
     @apply bg-navy-700 hover:bg-navy-600 text-gray-200 font-medium px-4 py-2 rounded-lg transition-colors border border-navy-600;
@@ -25,7 +33,8 @@
     @apply bg-critical hover:bg-red-600 text-white font-medium px-4 py-2 rounded-lg transition-colors;
   }
   .input-field {
-    @apply bg-navy-900 border border-navy-700 rounded-lg px-4 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-safe focus:border-transparent;
+    @apply bg-navy-900 border border-navy-700 rounded-lg px-4 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent;
+    --tw-ring-color: var(--brand-color, #2ECC71);
   }
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
