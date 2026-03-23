@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
 
 interface Tenant {
@@ -48,6 +48,62 @@ interface PlatformUser {
   partner_name: string | null;
 }
 
+interface TenantRevenue {
+  platformFee: number;
+  maintenanceFee: number;
+  setupFee: number;
+  customizationFee: number;
+}
+
+interface RevenueConfig {
+  [tenantSlug: string]: TenantRevenue;
+}
+
+// Revenue split percentages for partner-sourced deals
+const PARTNER_SPLITS = {
+  platform:      { partner: 0.30, ikigai: 0.70 },
+  maintenance:   { partner: 0.35, ikigai: 0.65 },
+  setup:         { partner: 0.40, ikigai: 0.60 },
+  customization: { partner: 0.50, ikigai: 0.50 },
+};
+
+const DEFAULT_REVENUE: Record<string, TenantRevenue> = {
+  "bio-techne":  { platformFee: 4500, maintenanceFee: 7500, setupFee: 25000, customizationFee: 35000 },
+  _advanced:     { platformFee: 3500, maintenanceFee: 5000, setupFee: 20000, customizationFee: 25000 },
+  _standard:     { platformFee: 2000, maintenanceFee: 3000, setupFee: 15000, customizationFee: 15000 },
+  _starter:      { platformFee: 1000, maintenanceFee: 1500, setupFee: 8000,  customizationFee: 5000  },
+  _default:      { platformFee: 1500, maintenanceFee: 2500, setupFee: 12000, customizationFee: 10000 },
+};
+
+const STORAGE_KEY = "ehs_revenue_config";
+
+function loadRevenueConfig(): RevenueConfig {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return {};
+}
+
+function saveRevenueConfig(config: RevenueConfig) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  } catch { /* ignore */ }
+}
+
+function getDefaultRevenue(tenant: Tenant): TenantRevenue {
+  if (DEFAULT_REVENUE[tenant.slug]) return { ...DEFAULT_REVENUE[tenant.slug] };
+  // Infer tier from user count as a rough heuristic
+  if (tenant.users >= 20) return { ...DEFAULT_REVENUE._advanced };
+  if (tenant.users >= 10) return { ...DEFAULT_REVENUE._standard };
+  if (tenant.users >= 3)  return { ...DEFAULT_REVENUE._starter };
+  return { ...DEFAULT_REVENUE._default };
+}
+
+function fmt$(n: number): string {
+  return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
 interface PlatformDashboardProps {
   token: string;
   onLogout: () => void;
@@ -64,7 +120,7 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
   const [createResult, setCreateResult] = useState<{ users: { email: string; password: string; role: string }[] } | null>(null);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"tenants" | "users">("tenants");
+  const [activeTab, setActiveTab] = useState<"tenants" | "users" | "revenue">("tenants");
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("demo123");
@@ -75,6 +131,32 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
   const [addUserForm, setAddUserForm] = useState({ email: "", full_name: "", password: "demo123", role: "user", tenant_id: "" });
   const [addingUser, setAddingUser] = useState(false);
   const [addUserSuccess, setAddUserSuccess] = useState<string | null>(null);
+  const [revenueConfig, setRevenueConfig] = useState<RevenueConfig>(loadRevenueConfig);
+
+  // Initialize revenue defaults for tenants once loaded
+  useEffect(() => {
+    if (tenants.length === 0) return;
+    setRevenueConfig((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const t of tenants) {
+        if (!next[t.slug]) {
+          next[t.slug] = getDefaultRevenue(t);
+          changed = true;
+        }
+      }
+      if (changed) saveRevenueConfig(next);
+      return changed ? next : prev;
+    });
+  }, [tenants]);
+
+  const updateRevenue = useCallback((slug: string, field: keyof TenantRevenue, value: number) => {
+    setRevenueConfig((prev) => {
+      const next = { ...prev, [slug]: { ...prev[slug], [field]: value } };
+      saveRevenueConfig(next);
+      return next;
+    });
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -257,6 +339,7 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
           {[
             { id: "tenants" as const, label: "Tenants" },
             { id: "users" as const, label: "Users & Passwords" },
+            { id: "revenue" as const, label: "Revenue" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -389,6 +472,314 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
             </div>
           </div>
         )}
+
+        {/* Revenue Tab */}
+        {activeTab === "revenue" && (() => {
+          // Compute all revenue metrics
+          const tenantRows = tenants.map((t) => {
+            const rev = revenueConfig[t.slug] || getDefaultRevenue(t);
+            const hasPartner = t.partner_name !== "Direct" && t.partner_name !== "--" && !!t.partner_id;
+            const ikigaiPlatform = hasPartner ? rev.platformFee * PARTNER_SPLITS.platform.ikigai : rev.platformFee;
+            const ikigaiMaint = hasPartner ? rev.maintenanceFee * PARTNER_SPLITS.maintenance.ikigai : rev.maintenanceFee;
+            const ikigaiSetup = hasPartner ? rev.setupFee * PARTNER_SPLITS.setup.ikigai : rev.setupFee;
+            const ikigaiCustom = hasPartner ? rev.customizationFee * PARTNER_SPLITS.customization.ikigai : rev.customizationFee;
+            const partnerPlatform = hasPartner ? rev.platformFee * PARTNER_SPLITS.platform.partner : 0;
+            const partnerMaint = hasPartner ? rev.maintenanceFee * PARTNER_SPLITS.maintenance.partner : 0;
+            const partnerSetup = hasPartner ? rev.setupFee * PARTNER_SPLITS.setup.partner : 0;
+            const partnerCustom = hasPartner ? rev.customizationFee * PARTNER_SPLITS.customization.partner : 0;
+            return {
+              tenant: t,
+              rev,
+              hasPartner,
+              totalMonthly: rev.platformFee + rev.maintenanceFee,
+              totalOneTime: rev.setupFee + rev.customizationFee,
+              ikigaiShare: ikigaiPlatform + ikigaiMaint + ikigaiSetup + ikigaiCustom,
+              partnerShare: partnerPlatform + partnerMaint + partnerSetup + partnerCustom,
+              ikigaiMonthly: ikigaiPlatform + ikigaiMaint,
+              partnerMonthly: partnerPlatform + partnerMaint,
+            };
+          });
+
+          const totalPlatformFees = tenantRows.reduce((s, r) => s + r.rev.platformFee, 0);
+          const totalMaintFees = tenantRows.reduce((s, r) => s + r.rev.maintenanceFee, 0);
+          const totalSetupFees = tenantRows.reduce((s, r) => s + r.rev.setupFee, 0);
+          const totalCustomFees = tenantRows.reduce((s, r) => s + r.rev.customizationFee, 0);
+          const totalMRR = totalPlatformFees + totalMaintFees;
+          const totalIkigaiShare = tenantRows.reduce((s, r) => s + r.ikigaiShare, 0);
+          const totalPartnerShare = tenantRows.reduce((s, r) => s + r.partnerShare, 0);
+          const totalRevenue = totalMRR + totalSetupFees + totalCustomFees;
+          const platformShareMRR = tenantRows.reduce((s, r) => s + r.ikigaiMonthly, 0);
+
+          const annualMRR = totalMRR * 12;
+          const annualPlatformNet = tenantRows.reduce((s, r) => s + r.ikigaiMonthly, 0) * 12;
+          const annualPartnerPayout = tenantRows.reduce((s, r) => s + r.partnerMonthly, 0) * 12;
+          const totalOneTime = totalSetupFees + totalCustomFees;
+          const ikigaiOneTime = tenantRows.reduce((s, r) => s + (r.ikigaiShare - r.ikigaiMonthly), 0);
+          const annualTotal = annualMRR + totalOneTime;
+          const annualNetTotal = annualPlatformNet + ikigaiOneTime;
+
+          // Bar chart max for scaling
+          const barMax = Math.max(totalPlatformFees, totalMaintFees, totalSetupFees, totalCustomFees, 1);
+
+          return (
+            <div className="space-y-6">
+              {/* Revenue Overview Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: "Total Platform Revenue", value: fmt$(totalRevenue), sub: "recurring + one-time", color: "text-green-400" },
+                  { label: "Platform Share (ikigaiOS)", value: fmt$(totalIkigaiShare), sub: "after partner splits", color: "text-emerald-400" },
+                  { label: "Partner Payouts", value: fmt$(totalPartnerShare), sub: "owed to partners", color: "text-amber-400" },
+                  { label: "Platform MRR", value: fmt$(platformShareMRR), sub: `${fmt$(totalMRR)}/mo gross`, color: "text-blue-400" },
+                ].map((c) => (
+                  <div key={c.label} className="bg-[#0d1220] border border-[#1e293b] rounded-xl p-4">
+                    <p className="text-xs text-gray-500 mb-1">{c.label}</p>
+                    <p className={`text-2xl font-bold ${c.color}`}>{c.value}</p>
+                    <p className="text-[10px] text-gray-600 mt-0.5">{c.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Per-Tenant Revenue Table with Sliders */}
+              <div className="bg-[#0d1220] border border-[#1e293b] rounded-xl">
+                <div className="px-6 py-4 border-b border-[#1e293b]">
+                  <h2 className="text-lg font-semibold text-white">Per-Tenant Revenue Configuration</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Adjust sliders to model revenue scenarios. Values persist across sessions.</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-xs text-gray-500 border-b border-[#1e293b]">
+                        <th className="text-left px-4 py-3 font-medium w-36">Tenant</th>
+                        <th className="text-left px-3 py-3 font-medium w-20">Partner</th>
+                        <th className="text-left px-3 py-3 font-medium">Platform Fee /mo</th>
+                        <th className="text-left px-3 py-3 font-medium">Maintenance /mo</th>
+                        <th className="text-left px-3 py-3 font-medium">Setup (one-time)</th>
+                        <th className="text-left px-3 py-3 font-medium">Custom (one-time)</th>
+                        <th className="text-right px-3 py-3 font-medium w-24">ikigaiOS Share</th>
+                        <th className="text-right px-4 py-3 font-medium w-24">Partner Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tenantRows.map(({ tenant: t, rev, hasPartner, ikigaiShare, partnerShare }) => (
+                        <tr key={t.id} className="border-b border-[#1e293b]/50 hover:bg-[#1e293b]/20 transition-colors align-top">
+                          <td className="px-4 py-3">
+                            <span className="text-sm font-medium text-white">{t.name}</span>
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className={`text-xs ${hasPartner ? "text-purple-400" : "text-gray-600"}`}>
+                              {hasPartner ? t.partner_name : "Direct"}
+                            </span>
+                          </td>
+                          {/* Platform Fee Slider */}
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="range"
+                                min={0} max={10000} step={100}
+                                value={rev.platformFee}
+                                onChange={(e) => updateRevenue(t.slug, "platformFee", Number(e.target.value))}
+                                className="rev-slider flex-1"
+                              />
+                              <span className="text-xs text-green-400 font-mono w-16 text-right">{fmt$(rev.platformFee)}</span>
+                            </div>
+                          </td>
+                          {/* Maintenance Fee Slider */}
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="range"
+                                min={0} max={15000} step={100}
+                                value={rev.maintenanceFee}
+                                onChange={(e) => updateRevenue(t.slug, "maintenanceFee", Number(e.target.value))}
+                                className="rev-slider flex-1"
+                              />
+                              <span className="text-xs text-green-400 font-mono w-16 text-right">{fmt$(rev.maintenanceFee)}</span>
+                            </div>
+                          </td>
+                          {/* Setup Fee Slider */}
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="range"
+                                min={0} max={100000} step={1000}
+                                value={rev.setupFee}
+                                onChange={(e) => updateRevenue(t.slug, "setupFee", Number(e.target.value))}
+                                className="rev-slider flex-1"
+                              />
+                              <span className="text-xs text-amber-400 font-mono w-16 text-right">{fmt$(rev.setupFee)}</span>
+                            </div>
+                          </td>
+                          {/* Customization Fee Slider */}
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="range"
+                                min={0} max={100000} step={1000}
+                                value={rev.customizationFee}
+                                onChange={(e) => updateRevenue(t.slug, "customizationFee", Number(e.target.value))}
+                                className="rev-slider flex-1"
+                              />
+                              <span className="text-xs text-purple-400 font-mono w-16 text-right">{fmt$(rev.customizationFee)}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            <span className="text-sm font-semibold text-emerald-400">{fmt$(ikigaiShare)}</span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={`text-sm font-semibold ${partnerShare > 0 ? "text-amber-400" : "text-gray-600"}`}>
+                              {partnerShare > 0 ? fmt$(partnerShare) : "--"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-[#334155]">
+                        <td className="px-4 py-3 text-sm font-bold text-white" colSpan={2}>Totals</td>
+                        <td className="px-3 py-3 text-right"><span className="text-xs font-bold text-green-400">{fmt$(totalPlatformFees)}/mo</span></td>
+                        <td className="px-3 py-3 text-right"><span className="text-xs font-bold text-green-400">{fmt$(totalMaintFees)}/mo</span></td>
+                        <td className="px-3 py-3 text-right"><span className="text-xs font-bold text-amber-400">{fmt$(totalSetupFees)}</span></td>
+                        <td className="px-3 py-3 text-right"><span className="text-xs font-bold text-purple-400">{fmt$(totalCustomFees)}</span></td>
+                        <td className="px-3 py-3 text-right"><span className="text-sm font-bold text-emerald-400">{fmt$(totalIkigaiShare)}</span></td>
+                        <td className="px-4 py-3 text-right"><span className="text-sm font-bold text-amber-400">{fmt$(totalPartnerShare)}</span></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Bottom row: Annual Projections + Revenue by Category */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Annual Projections */}
+                <div className="bg-[#0d1220] border border-[#1e293b] rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-white mb-4">Annual Projections</h3>
+                  <div className="space-y-3">
+                    {[
+                      { label: "Annual Recurring Revenue (MRR x 12)", value: fmt$(annualMRR), color: "text-blue-400" },
+                      { label: "Annual Maintenance Revenue", value: fmt$(totalMaintFees * 12), color: "text-green-400" },
+                      { label: "One-Time Revenue (Setup + Custom)", value: fmt$(totalOneTime), color: "text-amber-400" },
+                      { label: "Total Annual Revenue", value: fmt$(annualTotal), color: "text-white", bold: true },
+                      { label: "Annual Partner Payouts", value: `(${fmt$(annualPartnerPayout + (totalPartnerShare - tenantRows.reduce((s, r) => s + r.partnerMonthly, 0)))})`, color: "text-red-400" },
+                      { label: "Annual Platform Net Revenue", value: fmt$(annualNetTotal), color: "text-emerald-400", bold: true },
+                    ].map((row) => (
+                      <div key={row.label} className={`flex items-center justify-between py-1.5 ${row.bold ? "border-t border-[#334155] pt-3 mt-2" : ""}`}>
+                        <span className="text-xs text-gray-400">{row.label}</span>
+                        <span className={`text-sm font-mono ${row.bold ? "font-bold" : "font-medium"} ${row.color}`}>{row.value}</span>
+                      </div>
+                    ))}
+                    <div className="border-t border-[#1e293b] pt-3 mt-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500">YoY Growth Target (30%)</span>
+                        <span className="text-xs text-gray-500 font-mono">{fmt$(annualTotal * 1.3)} target</span>
+                      </div>
+                      <div className="mt-2 h-2 bg-[#1e293b] rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-green-600 to-emerald-400 rounded-full" style={{ width: `${Math.min(100, (1 / 1.3) * 100)}%` }} />
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span className="text-[10px] text-gray-600">Current</span>
+                        <span className="text-[10px] text-gray-600">+30% Target</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Revenue by Category */}
+                <div className="bg-[#0d1220] border border-[#1e293b] rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-white mb-4">Revenue by Category</h3>
+                  <div className="space-y-4">
+                    {[
+                      { label: "Platform Subscriptions", value: totalPlatformFees, suffix: "/mo", color: "bg-blue-500", textColor: "text-blue-400" },
+                      { label: "Maintenance & Support", value: totalMaintFees, suffix: "/mo", color: "bg-green-500", textColor: "text-green-400" },
+                      { label: "Setup Fees", value: totalSetupFees, suffix: "", color: "bg-amber-500", textColor: "text-amber-400" },
+                      { label: "Customization", value: totalCustomFees, suffix: "", color: "bg-purple-500", textColor: "text-purple-400" },
+                    ].map((cat) => (
+                      <div key={cat.label}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs text-gray-400">{cat.label}</span>
+                          <span className={`text-sm font-mono font-medium ${cat.textColor}`}>{fmt$(cat.value)}{cat.suffix}</span>
+                        </div>
+                        <div className="h-4 bg-[#1e293b] rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${cat.color} rounded-full transition-all duration-300`}
+                            style={{ width: `${Math.max(2, (cat.value / barMax) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-[#1e293b]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Recurring vs One-Time Split</span>
+                      <span className="text-xs text-gray-400 font-mono">
+                        {totalRevenue > 0 ? Math.round((totalMRR / totalRevenue) * 100) : 0}% recurring
+                      </span>
+                    </div>
+                    <div className="mt-2 h-3 bg-[#1e293b] rounded-full overflow-hidden flex">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-300"
+                        style={{ width: `${totalRevenue > 0 ? (totalMRR / totalRevenue) * 100 : 0}%` }}
+                      />
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-500 to-purple-500 transition-all duration-300"
+                        style={{ width: `${totalRevenue > 0 ? ((totalSetupFees + totalCustomFees) / totalRevenue) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-[10px] text-blue-400">Recurring</span>
+                      <span className="text-[10px] text-amber-400">One-Time</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Slider CSS */}
+              <style>{`
+                .rev-slider {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  background: #1e293b;
+                  height: 6px;
+                  border-radius: 3px;
+                  outline: none;
+                  min-width: 80px;
+                }
+                .rev-slider::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  width: 16px;
+                  height: 16px;
+                  border-radius: 50%;
+                  background: #10B981;
+                  cursor: pointer;
+                  border: 2px solid #064e3b;
+                }
+                .rev-slider::-moz-range-thumb {
+                  width: 16px;
+                  height: 16px;
+                  border-radius: 50%;
+                  background: #10B981;
+                  cursor: pointer;
+                  border: 2px solid #064e3b;
+                }
+                .rev-slider::-webkit-slider-runnable-track {
+                  height: 6px;
+                  border-radius: 3px;
+                }
+                .rev-slider::-moz-range-track {
+                  height: 6px;
+                  border-radius: 3px;
+                  background: #1e293b;
+                }
+                .rev-slider:hover::-webkit-slider-thumb {
+                  background: #34d399;
+                }
+                .rev-slider:hover::-moz-range-thumb {
+                  background: #34d399;
+                }
+              `}</style>
+            </div>
+          );
+        })()}
 
         {/* Tenant List */}
         {activeTab === "tenants" && <div className="bg-[#0d1220] border border-[#1e293b] rounded-xl">
