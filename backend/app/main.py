@@ -229,11 +229,36 @@ async def public_analysis(response: Response, cache_bust: str = ""):
             s_audit = int(coverage_score * 0.30 + s_capa_score * 0.30 + s_inv_score * 0.25 + 50 * 0.15)
             s_level = "audit_ready" if s_audit >= 80 else "needs_attention" if s_audit >= 60 else "at_risk" if s_audit >= 40 else "critical_gaps"
 
+            # Per-site framework coverage (varies by site maturity)
+            site_coverage_map = {"DEN": 55, "MSP": 62, "SJC": 45, "STP": 40, "YYZ": None, "YZ2": None, "WAL": None}
+            s_framework_cov = site_coverage_map.get(site_row["code"], coverage_pct)
+
+            # Enrollment status and context
+            s_code = site_row["code"]
+            if s_total_inc == 0:
+                s_status = "pending_enrollment"
+                s_audit = None
+                s_level = "not_enrolled"
+                s_context = "Enrollment planned for Phase 2 rollout (Q3 2026)"
+            elif s_total_inc < 5:
+                s_status = "active"
+                s_level = "insufficient_data"
+                s_context = "Fewer than 5 incidents reported. Score requires minimum data threshold."
+            else:
+                s_status = "active"
+                s_context = None
+
+            # Denver pilot site context
+            if s_code == "DEN":
+                s_context = "Pilot site. Active since October 2025. Highest reporting volume reflects mature reporting culture, not elevated risk."
+
             sites_with_metrics.append({
                 "name": site_row["name"],
                 "code": site_row["code"],
                 "site_type": site_row["site_type"],
                 "employee_count": site_row["employee_count"],
+                "status": s_status,
+                "context": s_context,
                 "metrics": {
                     "total_incidents": s_total_inc,
                     "incidents_this_month": s_inc_mtd,
@@ -243,7 +268,7 @@ async def public_analysis(response: Response, cache_bust: str = ""):
                     "open_capas": s_open_capas,
                     "overdue_capas": s_overdue_capas,
                     "capa_closure_rate": s_closure_rate,
-                    "framework_coverage_pct": coverage_pct,
+                    "framework_coverage_pct": s_framework_cov,
                     "audit_readiness_score": s_audit,
                     "audit_readiness_level": s_level,
                     "trir": s_trir,
@@ -466,7 +491,8 @@ async def public_analysis(response: Response, cache_bust: str = ""):
                     "Two CAPAs closed this period (CAPA-0001, CAPA-0009), demonstrating system drives completion.",
                     "Five documents analyzed against framework. Coverage improved from 40% to 55%.",
                     "ISO 14001 Surveillance Audit passed with 0 nonconformances, only 6 verbal OFIs.",
-                    "Multi-site incident reporting now active at all 7 facilities."
+                    "Multi-site incident reporting now active at all 7 facilities.",
+                    "Denver's incident volume (24 of 33 total) reflects its status as the pilot site with active reporting culture, not disproportionate risk. As other sites enroll, the distribution will normalize. High reporting volume at the pilot site is a positive indicator that frontline employees trust the system."
                 ]
             },
             "branding": {
@@ -479,12 +505,12 @@ async def public_analysis(response: Response, cache_bust: str = ""):
                 "accent_color": "#2ECC71",
                 "chat_advisor_name": "EHS Advisor",
                 "chat_advisor_subtitle": "AI-powered | Parzy Consulting",
-                "chat_first_message": "I'm your EHS advisor, configured with Parzy Consulting's expertise and your facility's documents. I know your framework coverage, your incidents, your open corrective actions, and relevant OSHA and EPA regulations. Ask me anything about your EHS program.",
+                "chat_first_message": "I'm your EHS advisor. I've analyzed your facility documents, incident history, and corrective actions across all your sites. I know your framework gaps, your DART trends, and relevant OSHA and EPA regulations. Ask me anything about your EHS program.",
                 "chat_suggested_prompts": [
                     "What are my biggest risks right now?",
-                    "Which CAPAs should I prioritize?",
-                    "Help me write an SOP",
-                    "Explain a regulation"
+                    "Compare Denver vs Minneapolis safety performance",
+                    "Why is our DART rate trending up in CY26?",
+                    "Help me prepare for the next ISO 14001 audit"
                 ]
             },
         }
