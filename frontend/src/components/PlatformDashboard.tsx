@@ -71,6 +71,10 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
   const [resetSuccess, setResetSuccess] = useState<string | null>(null);
   const [changePw, setChangePw] = useState("");
   const [changePwDone, setChangePwDone] = useState(false);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [addUserForm, setAddUserForm] = useState({ email: "", full_name: "", password: "demo123", role: "user", tenant_id: "" });
+  const [addingUser, setAddingUser] = useState(false);
+  const [addUserSuccess, setAddUserSuccess] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -122,6 +126,25 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
       setTimeout(() => setChangePwDone(false), 3000);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Change failed");
+    }
+  };
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddingUser(true);
+    try {
+      const res = await api<{ email: string; tenant: string }>("/api/platform/users", {
+        method: "POST", token, body: addUserForm,
+      });
+      setAddUserSuccess(`Created ${res.email} for ${res.tenant}`);
+      setShowAddUser(false);
+      setAddUserForm({ email: "", full_name: "", password: "demo123", role: "user", tenant_id: "" });
+      fetchUsers();
+      setTimeout(() => setAddUserSuccess(null), 4000);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Create failed");
+    } finally {
+      setAddingUser(false);
     }
   };
 
@@ -274,11 +297,27 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
               </div>
             </div>
 
+            {/* Add User Success Toast */}
+            {addUserSuccess && (
+              <div className="bg-green-900/50 border border-green-700 text-green-300 text-sm px-4 py-3 rounded-lg">{addUserSuccess}</div>
+            )}
+
             {/* All Users Table */}
             <div className="bg-[#0d1220] border border-[#1e293b] rounded-xl">
-              <div className="px-6 py-4 border-b border-[#1e293b]">
-                <h2 className="text-lg font-semibold text-white">All Users</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Reset passwords for any user account</p>
+              <div className="px-6 py-4 border-b border-[#1e293b] flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">All Users</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Manage users and passwords across all tenants</p>
+                </div>
+                <button
+                  onClick={() => setShowAddUser(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add User
+                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -527,6 +566,85 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Add User Modal */}
+      {showAddUser && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowAddUser(false)}>
+          <div className="bg-[#0d1220] border border-[#1e293b] rounded-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <form onSubmit={handleAddUser}>
+              <h3 className="text-lg font-bold text-white mb-4">Add User</h3>
+              <div className="space-y-3 mb-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Tenant</label>
+                  <select
+                    value={addUserForm.tenant_id}
+                    onChange={(e) => setAddUserForm({ ...addUserForm, tenant_id: e.target.value })}
+                    className="w-full bg-[#1e293b] border border-[#334155] text-white text-sm rounded-lg px-3 py-2.5 focus:border-green-500 focus:outline-none"
+                    required
+                  >
+                    <option value="">Select tenant...</option>
+                    {tenants.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    value={addUserForm.full_name}
+                    onChange={(e) => setAddUserForm({ ...addUserForm, full_name: e.target.value })}
+                    className="w-full bg-[#1e293b] border border-[#334155] text-white text-sm rounded-lg px-3 py-2.5 focus:border-green-500 focus:outline-none"
+                    placeholder="Ken Fairleigh"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={addUserForm.email}
+                    onChange={(e) => setAddUserForm({ ...addUserForm, email: e.target.value })}
+                    className="w-full bg-[#1e293b] border border-[#334155] text-white text-sm rounded-lg px-3 py-2.5 focus:border-green-500 focus:outline-none"
+                    placeholder="kfairleigh@bio-techne.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Password</label>
+                  <input
+                    type="text"
+                    value={addUserForm.password}
+                    onChange={(e) => setAddUserForm({ ...addUserForm, password: e.target.value })}
+                    className="w-full bg-[#1e293b] border border-[#334155] text-white text-sm rounded-lg px-3 py-2.5 focus:border-green-500 focus:outline-none"
+                    placeholder="demo123"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Role</label>
+                  <select
+                    value={addUserForm.role}
+                    onChange={(e) => setAddUserForm({ ...addUserForm, role: e.target.value })}
+                    className="w-full bg-[#1e293b] border border-[#334155] text-white text-sm rounded-lg px-3 py-2.5 focus:border-green-500 focus:outline-none"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="manager">Manager</option>
+                    <option value="user">User</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowAddUser(false)} className="flex-1 bg-[#1e293b] text-gray-300 text-sm font-medium py-2.5 rounded-lg hover:bg-[#334155] transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={addingUser} className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors disabled:opacity-50">
+                  {addingUser ? "Creating..." : "Create User"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

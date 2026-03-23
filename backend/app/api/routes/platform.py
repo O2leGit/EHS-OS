@@ -245,6 +245,14 @@ async def update_partner(partner_id: str, body: PartnerCreateRequest, db=Depends
 
 # ── User Management ──────────────────────────────────────────────────────────
 
+class CreateUserRequest(BaseModel):
+    email: str
+    full_name: str
+    password: str = "demo123"
+    role: str = "user"
+    tenant_id: str
+
+
 class ResetPasswordRequest(BaseModel):
     new_password: str
 
@@ -276,6 +284,24 @@ async def list_all_users(db=Depends(get_db), admin=Depends(require_platform_admi
         "partner_name": r["partner_name"],
         "created_at": r["created_at"].isoformat() if r["created_at"] else None,
     } for r in rows]
+
+
+@router.post("/users")
+async def create_user(body: CreateUserRequest, db=Depends(get_db), admin=Depends(require_platform_admin)):
+    """Create a user for any tenant."""
+    existing = await db.fetchrow("SELECT id FROM users WHERE email = $1", body.email)
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Email {body.email} already exists")
+    tenant = await db.fetchrow("SELECT id, name FROM tenants WHERE id = $1::uuid", body.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    uid = str(uuid.uuid4())
+    await db.execute(
+        """INSERT INTO users (id, email, password_hash, full_name, role, tenant_id)
+           VALUES ($1::uuid, $2, $3, $4, $5, $6::uuid)""",
+        uid, body.email, hash_password(body.password), body.full_name, body.role, body.tenant_id,
+    )
+    return {"id": uid, "email": body.email, "full_name": body.full_name, "role": body.role, "tenant": tenant["name"]}
 
 
 @router.post("/users/{user_id}/reset-password")
