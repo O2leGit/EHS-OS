@@ -11,7 +11,9 @@ import CapaPage from "./CapaPage";
 import AdminPage from "./AdminPage";
 import FeaturesPage from "./FeaturesPage";
 import ReportsPage from "./ReportsPage";
+import RiskMatrixPage from "./RiskMatrixPage";
 import ChatPanel from "./ChatPanel";
+import InspectionsPage from "./InspectionsPage";
 
 export interface TenantBranding {
   brand_name: string;
@@ -26,7 +28,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type Page = "dashboard" | "documents" | "incidents" | "capas" | "features" | "admin" | "reports";
+type Page = "dashboard" | "documents" | "incidents" | "capas" | "inspections" | "risk" | "features" | "admin" | "reports";
 
 export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
@@ -79,6 +81,10 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         return <IncidentsPage token={token} onOpenChat={handleOpenChat} showToast={showToast} />;
       case "capas":
         return <CapaPage token={token} onOpenChat={handleOpenChat} />;
+      case "inspections":
+        return <InspectionsPage token={token} />;
+      case "risk":
+        return <RiskMatrixPage token={token} />;
       case "reports":
         return <ReportsPage token={token} onOpenChat={handleOpenChat} />;
       case "features":

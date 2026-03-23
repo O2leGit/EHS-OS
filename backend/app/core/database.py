@@ -235,4 +235,21 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 
 CREATE INDEX IF NOT EXISTS idx_reports_tenant ON reports(tenant_id);
+
+CREATE TABLE IF NOT EXISTS inspections (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    site_id UUID REFERENCES sites(id),
+    template_name TEXT NOT NULL,
+    inspector_name TEXT,
+    status TEXT DEFAULT 'in_progress',
+    score INTEGER,
+    total_items INTEGER,
+    passed_items INTEGER,
+    failed_items INTEGER,
+    notes TEXT,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_inspections_tenant ON inspections(tenant_id);
 """
