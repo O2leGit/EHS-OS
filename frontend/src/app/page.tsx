@@ -12,9 +12,16 @@ const VIEWING_TENANT_KEY = "ehs_viewing_tenant";
 const RETURN_VIEW_KEY = "ehs_return_view";
 
 export default function Home() {
-  const [token, setToken] = useState<string | null>(
-    typeof window !== "undefined" ? getToken() : null
-  );
+  // Clear any stale token on fresh page load so login page shows
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    // If user navigated here directly (not via login-as return), always show login
+    const hasReturnToken = localStorage.getItem("ehs_return_token");
+    if (hasReturnToken) return getToken(); // preserve login-as flow
+    // Otherwise clear old session so user sees login page with role choices
+    clearAuth();
+    return null;
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
