@@ -29,6 +29,15 @@ export default function Home() {
   const [quickLogging, setQuickLogging] = useState<string | null>(null);
   const [viewType, setViewType] = useState<string | null>(null);
   const [viewingTenant, setViewingTenant] = useState<string | null>(null);
+  const [showDemo, setShowDemo] = useState(false);
+
+  // Check for ?demo=true URL param
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("demo") === "true") setShowDemo(true);
+    }
+  }, []);
 
   // Restore viewing-as state from localStorage
   useEffect(() => {
@@ -193,40 +202,44 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Quick Login Buttons */}
-        <div className="mb-5">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2 text-center">Quick Login</p>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { email: "chris@cotoole.com", label: "Platform Admin", short: "PA", from: "from-green-500", to: "to-emerald-600", hover: "hover:border-green-600/50", text: "group-hover:text-green-400" },
-              { email: "jen@parzyconsulting.com", label: "Partner", short: "P", from: "from-blue-500", to: "to-indigo-600", hover: "hover:border-blue-600/50", text: "group-hover:text-blue-400" },
-              { email: "admin@bio-techne.com", label: "Client Demo", short: "C", from: "from-cyan-500", to: "to-teal-600", hover: "hover:border-cyan-600/50", text: "group-hover:text-cyan-400" },
-            ].map((btn) => (
-              <button
-                key={btn.email}
-                onClick={() => handleQuickLogin(btn.email)}
-                disabled={loading}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border border-[#1e293b] bg-[#0d1220] ${btn.hover} hover:bg-[#0d1220]/80 transition-colors group disabled:opacity-50`}
-              >
-                <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${btn.from} ${btn.to} flex items-center justify-center text-white text-xs font-bold`}>
-                  {quickLogging === btn.email ? (
-                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  ) : btn.short}
-                </div>
-                <span className={`text-[10px] text-gray-400 ${btn.text} transition-colors`}>{btn.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Quick Login Buttons - only visible with ?demo=true */}
+        {showDemo && (
+          <>
+            <div className="mb-5">
+              <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2 text-center">Quick Login</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { email: "chris@cotoole.com", label: "Platform Admin", short: "PA", from: "from-green-500", to: "to-emerald-600", hover: "hover:border-green-600/50", text: "group-hover:text-green-400" },
+                  { email: "jen@parzyconsulting.com", label: "Partner", short: "P", from: "from-blue-500", to: "to-indigo-600", hover: "hover:border-blue-600/50", text: "group-hover:text-blue-400" },
+                  { email: "admin@bio-techne.com", label: "Client Demo", short: "C", from: "from-cyan-500", to: "to-teal-600", hover: "hover:border-cyan-600/50", text: "group-hover:text-cyan-400" },
+                ].map((btn) => (
+                  <button
+                    key={btn.email}
+                    onClick={() => handleQuickLogin(btn.email)}
+                    disabled={loading}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border border-[#1e293b] bg-[#0d1220] ${btn.hover} hover:bg-[#0d1220]/80 transition-colors group disabled:opacity-50`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${btn.from} ${btn.to} flex items-center justify-center text-white text-xs font-bold`}>
+                      {quickLogging === btn.email ? (
+                        <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      ) : btn.short}
+                    </div>
+                    <span className={`text-[10px] text-gray-400 ${btn.text} transition-colors`}>{btn.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <div className="flex items-center gap-3 mb-5">
-          <div className="flex-1 h-px bg-[#1e293b]" />
-          <span className="text-[10px] text-gray-600 uppercase tracking-wider">or sign in</span>
-          <div className="flex-1 h-px bg-[#1e293b]" />
-        </div>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex-1 h-px bg-[#1e293b]" />
+              <span className="text-[10px] text-gray-600 uppercase tracking-wider">or sign in</span>
+              <div className="flex-1 h-px bg-[#1e293b]" />
+            </div>
+          </>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-3">
           {error && (
