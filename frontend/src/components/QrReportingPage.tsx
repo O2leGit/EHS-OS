@@ -194,6 +194,16 @@ export default function QrReportingPage({ token }: QrReportingPageProps) {
                 Download QR Image
               </button>
 
+              <a
+                href={`mailto:?subject=${encodeURIComponent("Anonymous Safety Reporting - Scan to Report")}&body=${encodeURIComponent(`We've set up anonymous safety reporting for our facility.\n\nEmployees can report safety concerns anonymously by:\n\n1. Opening this link on their phone: ${reportUrl}\n2. Or scanning the QR poster posted in your facility\n\nNo login or app needed. All reports are completely anonymous.\n\nPlease share this link with your team and post the QR poster in visible locations (break rooms, exits, bulletin boards).`)}`}
+                className="w-full flex items-center justify-center gap-2 bg-navy-700 hover:bg-navy-600 border border-navy-600 text-white font-medium py-3 px-4 rounded-lg transition-colors text-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Send Link via Email
+              </a>
+
               <div className="bg-blue-900/20 border border-blue-700/30 rounded-lg p-4 mt-4">
                 <div className="flex items-center gap-2 mb-2">
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
