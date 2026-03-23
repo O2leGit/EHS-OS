@@ -355,6 +355,149 @@ async def reseed_demo_data(db):
                 },
             ],
         },
+        {
+            "filename": "Bio_Techne_Job_Hazard_Analysis_Lab_Ops.pdf",
+            "file_path": "/seed/jha_lab_ops.pdf",
+            "file_type": ".pdf",
+            "file_size": 1124000,
+            "analyses": [
+                {
+                    "tier": "3", "category": "Hazard Identification", "series": "100",
+                    "status": "covered",
+                    "reasoning": "Job Hazard Analysis for Lab Operations covers task-level hazard identification for 23 lab procedures including pipetting, centrifugation, autoclave operation, and chemical handling. Each JHA includes hazard controls hierarchy (elimination, substitution, engineering, administrative, PPE). Meets OSHA recommended practices for hazard identification.",
+                },
+            ],
+        },
+        {
+            "filename": "Bio_Techne_Safety_Meeting_Minutes_Q1_2026.pdf",
+            "file_path": "/seed/safety_minutes_q1.pdf",
+            "file_type": ".pdf",
+            "file_size": 345000,
+            "analyses": [
+                {
+                    "tier": "2", "category": "EHS Committee", "series": "200",
+                    "status": "covered",
+                    "reasoning": "Q1 2026 Safety Meeting Minutes document monthly EHS Committee meetings (Jan-Mar 2026) with attendance records, agenda items, action item tracking, and management participation. Demonstrates active safety committee governance per OSHA voluntary guidelines.",
+                },
+            ],
+        },
+        {
+            "filename": "Bio_Techne_LOTO_Procedures_2025.pdf",
+            "file_path": "/seed/loto_procedures.pdf",
+            "file_type": ".pdf",
+            "file_size": 1890000,
+            "analyses": [
+                {
+                    "tier": "3", "category": "Machine Safety", "series": "200",
+                    "status": "covered",
+                    "reasoning": "Lockout/Tagout Procedures manual covers energy control procedures for 47 pieces of equipment across all facilities. Includes machine-specific LOTO steps, authorized/affected employee lists, annual periodic inspections, and group lockout procedures. Complies with OSHA 29 CFR 1910.147.",
+                },
+            ],
+        },
+        {
+            "filename": "Bio_Techne_Hearing_Conservation_Program.pdf",
+            "file_path": "/seed/hearing_conservation.pdf",
+            "file_type": ".pdf",
+            "file_size": 678000,
+            "analyses": [
+                {
+                    "tier": "3", "category": "Industrial Hygiene", "series": "200",
+                    "status": "covered",
+                    "reasoning": "Hearing Conservation Program includes noise monitoring survey results, audiometric testing schedule, hearing protector selection guide (NRR ratings), employee training requirements, and recordkeeping procedures. Covers OSHA 29 CFR 1910.95 requirements for areas exceeding 85 dBA TWA.",
+                },
+            ],
+        },
+        {
+            "filename": "Bio_Techne_Respiratory_Protection_Program.pdf",
+            "file_path": "/seed/respiratory_protection.pdf",
+            "file_type": ".pdf",
+            "file_size": 1245000,
+            "analyses": [
+                {
+                    "tier": "3", "category": "PPE", "series": "200",
+                    "status": "covered",
+                    "reasoning": "Respiratory Protection Program includes written program with program administrator designation, workplace exposure assessments, respirator selection procedures, medical evaluation requirements, fit testing protocols (QLFT and QNFT), maintenance and storage, and voluntary use appendix. Meets OSHA 29 CFR 1910.134.",
+                },
+            ],
+        },
+        {
+            "filename": "Bio_Techne_HazCom_GHS_Program_2025.pdf",
+            "file_path": "/seed/hazcom_ghs.pdf",
+            "file_type": ".pdf",
+            "file_size": 967000,
+            "analyses": [
+                {
+                    "tier": "3", "category": "Chemical Safety", "series": "200",
+                    "status": "covered",
+                    "reasoning": "Hazard Communication Program aligned with GHS Rev 7 includes written HazCom plan, chemical inventory (482 chemicals), SDS management system, GHS label requirements, employee training program, and non-routine task procedures. Supplements the Chemical Hygiene Plan for non-lab areas.",
+                },
+            ],
+        },
+        {
+            "filename": "Bio_Techne_Fire_Prevention_Plan_2025.pdf",
+            "file_path": "/seed/fire_prevention.pdf",
+            "file_type": ".pdf",
+            "file_size": 534000,
+            "analyses": [
+                {
+                    "tier": "3", "category": "Fire and Life Safety", "series": "200",
+                    "status": "covered",
+                    "reasoning": "Fire Prevention Plan covers workplace fire hazards, proper handling and storage of flammable materials, ignition source controls, fire protection equipment maintenance, employee alarm system, and housekeeping procedures. Includes facility maps with extinguisher locations and egress routes. Meets OSHA 29 CFR 1910.39.",
+                },
+            ],
+        },
+        {
+            "filename": "Bio_Techne_Ergonomic_Assessment_Lab203_2026.pdf",
+            "file_path": "/seed/ergonomic_lab203.pdf",
+            "file_type": ".pdf",
+            "file_size": 2340000,
+            "analyses": [
+                {
+                    "tier": "3", "category": "Ergonomics", "series": "200",
+                    "status": "covered",
+                    "reasoning": "Ergonomic Assessment Report for Lab 203 includes workstation evaluations for 12 positions, RULA/REBA scores, repetitive motion risk analysis for pipetting tasks, recommended interventions (adjustable chairs, anti-fatigue mats, pipette aids), and follow-up schedule. Demonstrates proactive ergonomic hazard management.",
+                },
+            ],
+        },
+        {
+            "filename": "Bio_Techne_Contractor_Safety_Requirements.pdf",
+            "file_path": "/seed/contractor_safety.pdf",
+            "file_type": ".pdf",
+            "file_size": 456000,
+            "analyses": [
+                {
+                    "tier": "3", "category": "Contractor Safety", "series": "300",
+                    "status": "covered",
+                    "reasoning": "Contractor Safety Requirements document covers pre-qualification criteria, site orientation requirements, hot work and confined space permit procedures for contractors, daily safety briefings, incident reporting obligations, and contractor performance evaluation. Addresses multi-employer worksite responsibilities.",
+                },
+            ],
+        },
+        {
+            "filename": "Bio_Techne_Incident_Investigation_SOP.pdf",
+            "file_path": "/seed/incident_investigation_sop.pdf",
+            "file_type": ".pdf",
+            "file_size": 789000,
+            "analyses": [
+                {
+                    "tier": "3", "category": "Incident Management", "series": "300",
+                    "status": "covered",
+                    "reasoning": "Incident Investigation SOP defines investigation methodology (5-Why, fishbone, barrier analysis), investigation team roles, evidence preservation, root cause determination, corrective action assignment and tracking, and management review of findings. Includes investigation report template and severity classification matrix.",
+                },
+            ],
+        },
+        {
+            "filename": "Bio_Techne_Forklift_Training_Records_2025.xlsx",
+            "file_path": "/seed/forklift_training.xlsx",
+            "file_type": ".xlsx",
+            "file_size": 187000,
+            "analyses": [
+                {
+                    "tier": "3", "category": "Training", "series": "300",
+                    "status": "covered",
+                    "reasoning": "Forklift Operator Training Records for 2025 include formal instruction logs, practical evaluation checklists, operator competency assessments for 34 certified operators, 3-year recertification schedule, and daily pre-operation inspection forms. Compliant with OSHA 29 CFR 1910.178(l).",
+                },
+            ],
+        },
     ]
 
     for doc_info in new_docs:
