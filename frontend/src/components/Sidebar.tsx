@@ -133,12 +133,13 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, userName, u
       <div className="p-3 border-t border-navy-700">
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-3 px-0 py-2 text-sm text-gray-400 hover:text-red-400 transition-colors"
+          className="w-full flex items-center gap-3 px-0 py-2 text-sm text-red-400/70 hover:text-red-400 transition-colors"
+          title="Sign out"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
-          {expanded && <span>Sign out</span>}
+          {expanded ? <span>Sign out</span> : null}
         </button>
         {expanded && userName && (
           <p className="text-xs text-gray-500 mt-1 truncate">{userName}</p>
