@@ -152,6 +152,7 @@ export default function Home() {
     setError("");
     try {
       await doLogin(loginEmail, "demo123");
+      setQuickLogging(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
       setQuickLogging(null);
