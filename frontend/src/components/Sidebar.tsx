@@ -76,7 +76,7 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, userName, u
 
   return (
     <div
-      className={`bg-navy-900 border-r border-navy-700 flex flex-col transition-all duration-200 ${
+      className={`bg-navy-900 border-r border-navy-700 flex flex-col transition-all duration-200 no-print ${
         expanded ? "w-60" : "w-14"
       }`}
       onMouseEnter={() => { if (!isMobile) setExpanded(true); }}

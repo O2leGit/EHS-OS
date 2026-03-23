@@ -26,8 +26,26 @@
   body.printing-dashboard [class*="chat-toggle"],
   body.printing-dashboard .no-print,
   body.printing-dashboard .no-print-divider,
-  body.printing-dashboard .animate-pulse {
+  body.printing-dashboard .animate-pulse,
+  body.printing-dashboard button[class*="fixed"],
+  body.printing-dashboard [class*="z-40"],
+  body.printing-dashboard [class*="z-50"] {
     display: none !important;
+  }
+  /* Hide sidebar component (first child of flex container) */
+  body.printing-dashboard .flex > div:first-child:not(main) {
+    display: none !important;
+  }
+  /* CRITICAL: Remove all overflow/height constraints so full page prints */
+  body.printing-dashboard,
+  body.printing-dashboard > div,
+  body.printing-dashboard > div > div,
+  body.printing-dashboard [class*="h-screen"],
+  body.printing-dashboard [class*="overflow-hidden"],
+  body.printing-dashboard [class*="overflow-y-auto"] {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   /* Full-width dashboard content */
   body.printing-dashboard .dashboard-content {
@@ -38,7 +56,26 @@
   }
   body.printing-dashboard main {
     margin-left: 0 !important;
+    margin-right: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
+    flex: none !important;
+  }
+  /* Hide the "Viewing as" banner and return button */
+  body.printing-dashboard [class*="fixed top"],
+  body.printing-dashboard [class*="Return to Platform"] {
+    display: none !important;
+  }
+  /* Ensure all sections are visible, no truncation */
+  body.printing-dashboard * {
+    max-height: none !important;
+  }
+  /* Prevent page break inside cards and tables */
+  body.printing-dashboard .card,
+  body.printing-dashboard table,
+  body.printing-dashboard [class*="rounded-xl"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   /* Make cards print-friendly */
   body.printing-dashboard [class*="bg-navy"] {
