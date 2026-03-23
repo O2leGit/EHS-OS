@@ -14,6 +14,7 @@ import ReportsPage from "./ReportsPage";
 import RiskMatrixPage from "./RiskMatrixPage";
 import ChatPanel from "./ChatPanel";
 import InspectionsPage from "./InspectionsPage";
+import ComingSoonPage from "./ComingSoonPage";
 
 export interface TenantBranding {
   brand_name: string;
@@ -31,7 +32,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type Page = "dashboard" | "documents" | "incidents" | "capas" | "inspections" | "risk" | "features" | "admin" | "reports";
+type Page = "dashboard" | "documents" | "incidents" | "capas" | "inspections" | "risk" | "features" | "admin" | "reports" | "training" | "sds" | "audits" | "permits";
 
 export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
@@ -97,6 +98,90 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         return <RiskMatrixPage token={token} />;
       case "reports":
         return <ReportsPage token={token} onOpenChat={handleOpenChat} />;
+      case "training":
+        return (
+          <ComingSoonPage
+            title="Training Management"
+            description="Centralized training tracking, certification management, and compliance-driven learning paths for your entire workforce."
+            expectedDate="Q3 2026"
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+              </svg>
+            }
+            capabilities={[
+              "Employee training records and certification tracking",
+              "Auto-assigned training based on role, site, and hazard exposure",
+              "Expiration alerts and renewal workflows",
+              "OSHA-required training compliance matrix",
+              "Training completion dashboards with site comparisons",
+              "LMS integration (Cornerstone, SAP SuccessFactors)",
+            ]}
+          />
+        );
+      case "sds":
+        return (
+          <ComingSoonPage
+            title="SDS Management"
+            description="AI-powered Safety Data Sheet management with automatic hazard extraction, chemical inventory tracking, and GHS compliance."
+            expectedDate="Q3 2026"
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+              </svg>
+            }
+            capabilities={[
+              "Searchable SDS library with version control",
+              "AI extraction of hazard classifications, PPE requirements, and exposure limits",
+              "Chemical inventory by site and location",
+              "Right-to-Know compliance reporting",
+              "Emergency response data instantly accessible",
+              "Integration with chemical purchasing systems",
+            ]}
+          />
+        );
+      case "audits":
+        return (
+          <ComingSoonPage
+            title="Audit Management"
+            description="End-to-end audit lifecycle management from planning through findings resolution, with AI-powered gap analysis and corrective action tracking."
+            expectedDate="Q4 2026"
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            }
+            capabilities={[
+              "Audit scheduling and resource planning",
+              "Configurable audit templates (ISO 14001, ISO 45001, OSHA, VPP)",
+              "Mobile audit execution with photo evidence",
+              "AI-generated findings and recommendations",
+              "Corrective action tracking linked to CAPAs",
+              "Audit trend analytics and site benchmarking",
+            ]}
+          />
+        );
+      case "permits":
+        return (
+          <ComingSoonPage
+            title="Permit to Work"
+            description="Digital permit-to-work system for high-hazard activities with multi-level approval workflows, real-time monitoring, and automatic safety controls."
+            expectedDate="Q4 2026"
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+            }
+            capabilities={[
+              "Hot work, confined space, LOTO, working at height permits",
+              "Multi-level digital approval workflows",
+              "Real-time active permit dashboard",
+              "Automatic conflict detection (overlapping permits in same area)",
+              "Permit expiration and extension management",
+              "Integration with contractor management",
+            ]}
+          />
+        );
       case "features":
         return <FeaturesPage />;
       case "admin":
