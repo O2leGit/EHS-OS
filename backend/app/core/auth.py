@@ -17,12 +17,13 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_token(user_id: str, tenant_id: str, role: str) -> str:
+def create_token(user_id: str, tenant_id: str, role: str, is_platform_admin: bool = False) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
     payload = {
         "sub": user_id,
         "tenant_id": tenant_id,
         "role": role,
+        "is_platform_admin": is_platform_admin,
         "exp": expire,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)

@@ -160,6 +160,18 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
 
+-- Add is_platform_admin to users (for super-admin accounts)
+DO $$ BEGIN
+    ALTER TABLE users ADD COLUMN is_platform_admin BOOLEAN DEFAULT false;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Allow NULL tenant_id for platform admin users
+DO $$ BEGIN
+    ALTER TABLE users ALTER COLUMN tenant_id DROP NOT NULL;
+EXCEPTION WHEN others THEN NULL;
+END $$;
+
 -- Add branding columns to tenants
 DO $$ BEGIN
     ALTER TABLE tenants ADD COLUMN brand_name VARCHAR(100);

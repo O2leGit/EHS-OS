@@ -4,7 +4,7 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.routes import auth, documents, incidents, capas, dashboard, chat, reports, admin, audit, briefing, sites, branding
+from app.api.routes import auth, documents, incidents, capas, dashboard, chat, reports, admin, audit, briefing, sites, branding, platform
 
 
 @asynccontextmanager
@@ -44,6 +44,7 @@ app.include_router(audit.router, prefix="/api/audit", tags=["audit"])
 app.include_router(briefing.router, prefix="/api/briefing", tags=["briefing"])
 app.include_router(sites.router, prefix="/api/sites", tags=["sites"])
 app.include_router(branding.router, prefix="/api/tenant", tags=["tenant"])
+app.include_router(platform.router, prefix="/api/platform", tags=["platform"])
 
 
 @app.get("/health")

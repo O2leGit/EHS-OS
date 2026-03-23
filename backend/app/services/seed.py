@@ -721,6 +721,31 @@ async def reseed_demo_data(db):
     site_check = await db.fetch("SELECT code, name, employee_count FROM sites WHERE tenant_id = $1 ORDER BY code", tid)
     print(f"Reseed complete: {len(site_check)} sites -> {[(s['code'], s['name'], s['employee_count']) for s in site_check]}")
 
+    # =========================================================================
+    # Platform Admin Accounts (tenant_id = NULL, is_platform_admin = true)
+    # =========================================================================
+    platform_admins = [
+        ("chris@cotoole.com", "Chris OToole"),
+        ("greg@scaleos.com", "Greg Serio"),
+        ("jen@parzyconsulting.com", "Jen Parzacone"),
+    ]
+    for email, name in platform_admins:
+        existing = await db.fetchrow("SELECT id FROM users WHERE email = $1", email)
+        if not existing:
+            await db.execute(
+                """INSERT INTO users (email, password_hash, full_name, role, tenant_id, is_platform_admin)
+                   VALUES ($1, $2, $3, 'platform_admin', NULL, true)""",
+                email, hash_password("demo123"), name,
+            )
+            print(f"Created platform admin: {email}")
+        else:
+            # Ensure flags are correct even if user exists
+            await db.execute(
+                "UPDATE users SET is_platform_admin = true, role = 'platform_admin', tenant_id = NULL WHERE email = $1",
+                email,
+            )
+    print("Platform admin accounts ready.")
+
 
 if __name__ == "__main__":
     asyncio.run(seed())
