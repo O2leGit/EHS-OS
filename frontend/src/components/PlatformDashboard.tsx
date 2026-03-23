@@ -37,6 +37,17 @@ interface PlatformMetrics {
   platform_health: string;
 }
 
+interface PlatformUser {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_platform_admin: boolean;
+  tenant_name: string | null;
+  tenant_slug: string | null;
+  partner_name: string | null;
+}
+
 interface PlatformDashboardProps {
   token: string;
   onLogout: () => void;
@@ -53,6 +64,13 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
   const [createResult, setCreateResult] = useState<{ users: { email: string; password: string; role: string }[] } | null>(null);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"tenants" | "users">("tenants");
+  const [users, setUsers] = useState<PlatformUser[]>([]);
+  const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [resetPassword, setResetPassword] = useState("demo123");
+  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
+  const [changePw, setChangePw] = useState("");
+  const [changePwDone, setChangePwDone] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -71,7 +89,44 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const u = await api<PlatformUser[]>("/api/platform/users", { token });
+      setUsers(u);
+    } catch (err) {
+      console.error("Failed to load users:", err);
+    }
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    try {
+      await api("/api/platform/users/" + userId + "/reset-password", {
+        method: "POST", token, body: { new_password: resetPassword },
+      });
+      setResetSuccess(userId);
+      setResetUserId(null);
+      setTimeout(() => setResetSuccess(null), 3000);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Reset failed");
+    }
+  };
+
+  const handleChangeMyPassword = async () => {
+    if (!changePw) return;
+    try {
+      await api("/api/platform/change-password", {
+        method: "POST", token, body: { new_password: changePw },
+      });
+      setChangePwDone(true);
+      setChangePw("");
+      setTimeout(() => setChangePwDone(false), 3000);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Change failed");
+    }
+  };
+
   useEffect(() => { fetchData(); }, [token]);
+  useEffect(() => { if (activeTab === "users") fetchUsers(); }, [activeTab]);
 
   const handleLoginAs = async (tenantId: string) => {
     try {
@@ -174,8 +229,130 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
           </div>
         )}
 
+        {/* Tab Buttons */}
+        <div className="flex gap-1 mb-4">
+          {[
+            { id: "tenants" as const, label: "Tenants" },
+            { id: "users" as const, label: "Users & Passwords" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === tab.id
+                  ? "bg-green-600/20 text-green-400 border border-green-700/50"
+                  : "text-gray-400 hover:text-gray-200 hover:bg-[#1e293b]/50"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Users & Passwords Tab */}
+        {activeTab === "users" && (
+          <div className="space-y-4">
+            {/* Change My Password */}
+            <div className="bg-[#0d1220] border border-[#1e293b] rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-white mb-3">Change My Password</h3>
+              <div className="flex items-center gap-3">
+                <input
+                  type="password"
+                  value={changePw}
+                  onChange={(e) => setChangePw(e.target.value)}
+                  placeholder="New password"
+                  className="bg-[#1e293b] border border-[#334155] text-white text-sm rounded-lg px-3 py-2 focus:border-green-500 focus:outline-none w-64"
+                />
+                <button
+                  onClick={handleChangeMyPassword}
+                  disabled={!changePw}
+                  className="px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Update
+                </button>
+                {changePwDone && <span className="text-green-400 text-sm">Password changed</span>}
+              </div>
+            </div>
+
+            {/* All Users Table */}
+            <div className="bg-[#0d1220] border border-[#1e293b] rounded-xl">
+              <div className="px-6 py-4 border-b border-[#1e293b]">
+                <h2 className="text-lg font-semibold text-white">All Users</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Reset passwords for any user account</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-xs text-gray-500 border-b border-[#1e293b]">
+                      <th className="text-left px-6 py-3 font-medium">Name</th>
+                      <th className="text-left px-4 py-3 font-medium">Email</th>
+                      <th className="text-left px-4 py-3 font-medium">Role</th>
+                      <th className="text-left px-4 py-3 font-medium">Tenant / Partner</th>
+                      <th className="text-right px-6 py-3 font-medium">Password</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u.id} className="border-b border-[#1e293b]/50 hover:bg-[#1e293b]/30 transition-colors">
+                        <td className="px-6 py-3 text-sm text-white">{u.full_name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-300">{u.email}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full border ${
+                            u.is_platform_admin ? "bg-green-900/50 text-green-400 border-green-800/50"
+                            : u.role === "partner" ? "bg-blue-900/50 text-blue-400 border-blue-800/50"
+                            : u.role === "admin" ? "bg-purple-900/50 text-purple-400 border-purple-800/50"
+                            : "bg-gray-800/50 text-gray-400 border-gray-700/50"
+                          }`}>
+                            {u.is_platform_admin ? "Platform Admin" : u.role}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-400">
+                          {u.tenant_name || u.partner_name || "--"}
+                        </td>
+                        <td className="px-6 py-3 text-right">
+                          {resetUserId === u.id ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <input
+                                type="text"
+                                value={resetPassword}
+                                onChange={(e) => setResetPassword(e.target.value)}
+                                className="bg-[#1e293b] border border-[#334155] text-white text-xs rounded px-2 py-1.5 w-28 focus:border-green-500 focus:outline-none"
+                              />
+                              <button
+                                onClick={() => handleResetPassword(u.id)}
+                                className="px-2.5 py-1.5 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                              >
+                                Set
+                              </button>
+                              <button
+                                onClick={() => setResetUserId(null)}
+                                className="px-2 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : resetSuccess === u.id ? (
+                            <span className="text-green-400 text-xs">Reset done</span>
+                          ) : (
+                            <button
+                              onClick={() => { setResetUserId(u.id); setResetPassword("demo123"); }}
+                              className="px-3 py-1.5 text-xs font-medium text-yellow-400 hover:bg-yellow-900/30 rounded-lg border border-yellow-800/30 transition-colors"
+                            >
+                              Reset Password
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tenant List */}
-        <div className="bg-[#0d1220] border border-[#1e293b] rounded-xl">
+        {activeTab === "tenants" && <div className="bg-[#0d1220] border border-[#1e293b] rounded-xl">
           <div className="px-6 py-4 border-b border-[#1e293b] flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">Tenants</h2>
             <button
@@ -262,7 +439,7 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
               </tbody>
             </table>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Create Tenant Modal */}

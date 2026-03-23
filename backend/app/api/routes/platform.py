@@ -243,6 +243,64 @@ async def update_partner(partner_id: str, body: PartnerCreateRequest, db=Depends
     return {"id": partner_id, "name": body.name}
 
 
+# ── User Management ──────────────────────────────────────────────────────────
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str
+
+
+class ChangeMyPasswordRequest(BaseModel):
+    new_password: str
+
+
+@router.get("/users")
+async def list_all_users(db=Depends(get_db), admin=Depends(require_platform_admin)):
+    """List all users across all tenants."""
+    rows = await db.fetch(
+        """SELECT u.id, u.email, u.full_name, u.role, u.is_platform_admin, u.created_at,
+                  t.name as tenant_name, t.slug as tenant_slug,
+                  p.name as partner_name
+           FROM users u
+           LEFT JOIN tenants t ON u.tenant_id = t.id
+           LEFT JOIN partners p ON u.partner_id = p.id
+           ORDER BY u.role, u.email"""
+    )
+    return [{
+        "id": str(r["id"]),
+        "email": r["email"],
+        "full_name": r["full_name"],
+        "role": r["role"],
+        "is_platform_admin": bool(r["is_platform_admin"]),
+        "tenant_name": r["tenant_name"],
+        "tenant_slug": r["tenant_slug"],
+        "partner_name": r["partner_name"],
+        "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+    } for r in rows]
+
+
+@router.post("/users/{user_id}/reset-password")
+async def reset_user_password(user_id: str, body: ResetPasswordRequest, db=Depends(get_db), admin=Depends(require_platform_admin)):
+    """Reset any user's password."""
+    user = await db.fetchrow("SELECT id, email FROM users WHERE id = $1::uuid", user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.execute(
+        "UPDATE users SET password_hash = $1 WHERE id = $2::uuid",
+        hash_password(body.new_password), user_id,
+    )
+    return {"email": user["email"], "password_reset": True}
+
+
+@router.post("/change-password")
+async def change_my_password(body: ChangeMyPasswordRequest, db=Depends(get_db), admin=Depends(require_platform_admin)):
+    """Change the current platform admin's password."""
+    await db.execute(
+        "UPDATE users SET password_hash = $1 WHERE id = $2::uuid",
+        hash_password(body.new_password), admin["sub"],
+    )
+    return {"password_changed": True}
+
+
 # ── Metrics ───────────────────────────────────────────────────────────────────
 
 @router.get("/metrics")
