@@ -713,7 +713,7 @@ async def reseed_demo_data(db):
     # Block 6: Parzy branding
     # =========================================================================
     await db.execute(
-        "UPDATE tenants SET brand_name = 'Parzy Consulting' WHERE id = $1 AND (brand_name IS NULL OR brand_name = '')",
+        "UPDATE tenants SET brand_name = 'Bio-Techne', logo_url = 'https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg' WHERE id = $1 AND (brand_name IS NULL OR brand_name = '' OR brand_name = 'Parzy Consulting')",
         tid,
     )
 

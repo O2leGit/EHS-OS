@@ -13,6 +13,14 @@ import FeaturesPage from "./FeaturesPage";
 import ReportsPage from "./ReportsPage";
 import ChatPanel from "./ChatPanel";
 
+export interface TenantBranding {
+  brand_name: string;
+  logo_url: string | null;
+  partner_name: string | null;
+  partner_logo_url: string | null;
+  tenant_name?: string;
+}
+
 interface DashboardProps {
   token: string;
   onLogout: () => void;
@@ -28,6 +36,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [toasts, setToasts] = useState<{id: number; message: string; type: 'success' | 'error'}[]>([]);
   const [sites, setSites] = useState<{id: string; name: string; code: string}[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const [branding, setBranding] = useState<TenantBranding | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     const id = Date.now();
@@ -45,6 +54,9 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     api<{id: string; name: string; code: string}[]>("/api/sites/", { token })
       .then(setSites)
       .catch(console.error);
+    api<TenantBranding>("/api/tenant/branding", { token })
+      .then(setBranding)
+      .catch(console.error);
   }, [token, onLogout]);
 
   const handleLogout = () => {
@@ -60,7 +72,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const renderPage = () => {
     switch (currentPage) {
       case "dashboard":
-        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} onOpenChat={handleOpenChat} selectedSiteId={selectedSiteId} />;
+        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} onOpenChat={handleOpenChat} selectedSiteId={selectedSiteId} branding={branding} />;
       case "documents":
         return <DocumentsPage token={token} onOpenChat={handleOpenChat} showToast={showToast} />;
       case "incidents":
@@ -74,7 +86,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       case "admin":
         return <AdminPage token={token} userRole={user?.role || ""} />;
       default:
-        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} onOpenChat={handleOpenChat} />;
+        return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} onOpenChat={handleOpenChat} branding={branding} />;
     }
   };
 
@@ -89,6 +101,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         sites={sites}
         selectedSiteId={selectedSiteId}
         onSiteChange={setSelectedSiteId}
+        branding={branding}
       />
       <main className={`flex-1 overflow-y-auto transition-all ${chatOpen ? "mr-[380px]" : ""}`}>
         <div className="p-6 max-w-7xl mx-auto">

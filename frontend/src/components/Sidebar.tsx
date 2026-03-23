@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { TenantBranding } from "./Dashboard";
 
 interface SidebarProps {
   currentPage: string;
@@ -11,6 +12,7 @@ interface SidebarProps {
   sites?: {id: string; name: string; code: string}[];
   selectedSiteId?: string | null;
   onSiteChange?: (siteId: string | null) => void;
+  branding?: TenantBranding | null;
 }
 
 interface NavItem {
@@ -30,7 +32,7 @@ const navItems: NavItem[] = [
   { id: "admin", label: "Admin", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z", adminOnly: true },
 ];
 
-export default function Sidebar({ currentPage, onNavigate, onLogout, userName, userRole, sites, selectedSiteId, onSiteChange }: SidebarProps) {
+export default function Sidebar({ currentPage, onNavigate, onLogout, userName, userRole, sites, selectedSiteId, onSiteChange, branding }: SidebarProps) {
   const [expanded, setExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -44,6 +46,8 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, userName, u
   const handleToggle = () => {
     if (isMobile) setExpanded((prev) => !prev);
   };
+
+  const tenantName = branding?.tenant_name || branding?.brand_name || "EHS-OS";
 
   return (
     <div
@@ -76,11 +80,15 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, userName, u
           )}
           {!isMobile && expanded && (
             <div className="flex flex-col">
-              <img
-                src="https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg"
-                alt="Bio-Techne"
-                className="h-6 object-contain" style={{ filter: "brightness(0) invert(1)" }}
-              />
+              {branding?.logo_url ? (
+                <img
+                  src={branding.logo_url}
+                  alt={tenantName}
+                  className="h-6 object-contain" style={{ filter: "brightness(0) invert(1)" }}
+                />
+              ) : (
+                <span className="text-sm font-bold text-white">{tenantName}</span>
+              )}
               <span className="text-[9px] text-gray-500 mt-0.5">EHS Management System</span>
             </div>
           )}
@@ -135,15 +143,15 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, userName, u
         {expanded && userName && (
           <p className="text-xs text-gray-500 mt-1 truncate">{userName}</p>
         )}
-        {expanded && (
+        {expanded && branding?.partner_name && (
           <div className="flex flex-col items-center gap-1 mt-2">
             <div className="flex items-center gap-1.5">
               <span className="text-[9px] text-gray-500">Managed by</span>
-              <img
-                src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_200,h_57,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
-                alt="Parzy Consulting"
-                className="h-4 object-contain opacity-70"
-              />
+              {branding.partner_logo_url ? (
+                <img src={branding.partner_logo_url} alt={branding.partner_name} className="h-4 object-contain opacity-70" />
+              ) : (
+                <span className="text-[9px] text-gray-400 font-medium">{branding.partner_name}</span>
+              )}
             </div>
           </div>
         )}

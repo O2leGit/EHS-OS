@@ -16,11 +16,20 @@ import {
   Legend,
 } from "recharts";
 
+interface TenantBranding {
+  brand_name: string;
+  logo_url: string | null;
+  partner_name: string | null;
+  partner_logo_url: string | null;
+  tenant_name?: string;
+}
+
 interface DashboardHomeProps {
   token: string;
   onNavigate: (page: string) => void;
   onOpenChat?: (message: string) => void;
   selectedSiteId?: string | null;
+  branding?: TenantBranding | null;
 }
 
 interface BriefingPattern {
@@ -195,7 +204,7 @@ function AiPromptBar({ prompts, onOpenChat }: { prompts: string[]; onOpenChat?: 
   );
 }
 
-export default function DashboardHome({ token, onNavigate, onOpenChat, selectedSiteId }: DashboardHomeProps) {
+export default function DashboardHome({ token, onNavigate, onOpenChat, selectedSiteId, branding }: DashboardHomeProps) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [incidentsOverTime, setIncidentsOverTime] = useState<IncidentWeek[]>([]);
   const [capaStatus, setCapaStatus] = useState<CapaStatus[]>([]);
@@ -422,28 +431,36 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
         </div>
       )}
 
-      {/* Bio-Techne Header */}
+      {/* Tenant Header - dynamic branding */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <img
-            src="https://www.bio-techne.com/themes/custom/bio_techne_global/logo.svg"
-            alt="Bio-Techne"
-            className="h-8 object-contain"
-            style={{ filter: "brightness(0) invert(1)" }}
-          />
+          {branding?.logo_url ? (
+            <img
+              src={branding.logo_url}
+              alt={branding.tenant_name || branding.brand_name}
+              className="h-8 object-contain"
+              style={{ filter: "brightness(0) invert(1)" }}
+            />
+          ) : (
+            <span className="text-2xl font-bold text-white">{branding?.tenant_name || branding?.brand_name || "EHS-OS"}</span>
+          )}
           <div className="h-6 w-px bg-navy-700" />
           <h1 className="text-2xl font-bold">EHS Management System</h1>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-gray-400">Managed by</span>
-            <img
-              src="https://static.wixstatic.com/media/904f7b_34be1989a6234bc18b580179563ed22d~mv2.png/v1/crop/x_0,y_191,w_2169,h_617/fill/w_200,h_57,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/finalparzy3_edited.png"
-              alt="Parzy Consulting"
-              className="h-6 object-contain opacity-80"
-            />
-          </div>
-          <div className="h-4 w-px bg-navy-700" />
+          {branding?.partner_name && (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-400">Managed by</span>
+                {branding.partner_logo_url ? (
+                  <img src={branding.partner_logo_url} alt={branding.partner_name} className="h-6 object-contain opacity-80" />
+                ) : (
+                  <span className="text-xs font-medium text-gray-300">{branding.partner_name}</span>
+                )}
+              </div>
+              <div className="h-4 w-px bg-navy-700" />
+            </>
+          )}
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] text-gray-400">Powered by</span>
             <span className="text-xs font-semibold text-gray-300">ScaleOS</span>
