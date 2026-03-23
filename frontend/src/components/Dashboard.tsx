@@ -115,17 +115,19 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         </div>
       </main>
 
-      {/* Chat toggle */}
-      <button
-        onClick={() => setChatOpen(!chatOpen)}
-        className="fixed right-4 bottom-4 bg-safe hover:bg-green-600 text-white rounded-full shadow-lg z-50 transition-colors flex items-center gap-2 px-4 py-3"
-        title="Ask an EHS AI Assistant"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-        <span className="text-sm font-medium">Ask an EHS AI Assistant</span>
-      </button>
+      {/* Chat toggle - hidden when chat is open */}
+      {!chatOpen && (
+        <button
+          onClick={() => setChatOpen(true)}
+          className="fixed right-4 bottom-4 bg-safe hover:bg-green-600 text-white rounded-full shadow-lg z-50 transition-colors flex items-center gap-2 px-4 py-3"
+          title="Ask an EHS AI Assistant"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <span className="text-sm font-medium">Ask an EHS AI Assistant</span>
+        </button>
+      )}
 
       {/* Chat panel */}
       {chatOpen && (
