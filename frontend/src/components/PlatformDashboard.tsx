@@ -545,13 +545,17 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
                       className="w-full bg-[#1e293b] border border-[#334155] text-white text-sm rounded-lg px-3 py-2.5 focus:border-green-500 focus:outline-none"
                     >
                       <option value="aerospace">Aerospace</option>
-                      <option value="pharma">Pharmaceutical</option>
+                      <option value="agriculture">Agriculture / Farming</option>
                       <option value="biotech">Biotechnology</option>
-                      <option value="medical_device">Medical Device</option>
                       <option value="chemical">Chemical</option>
-                      <option value="restaurant">Restaurant / Food Service</option>
+                      <option value="construction">Construction</option>
                       <option value="fishing">Fishing / Marine</option>
+                      <option value="hospitality">Hospitality / Hotel / Resort</option>
+                      <option value="landscaping">Landscaping / Lawn Care</option>
+                      <option value="medical_device">Medical Device</option>
+                      <option value="pharma">Pharmaceutical</option>
                       <option value="professional_services">Professional Services / Office</option>
+                      <option value="restaurant">Restaurant / Food Service</option>
                       <option value="general_manufacturing">General Manufacturing</option>
                     </select>
                   </div>
