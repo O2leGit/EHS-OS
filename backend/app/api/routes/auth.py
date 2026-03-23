@@ -62,7 +62,8 @@ async def login(req: LoginRequest, db=Depends(get_db)):
 @router.get("/me")
 async def me(current_user: dict = Depends(get_current_user), db=Depends(get_db)):
     user = await db.fetchrow(
-        "SELECT id, email, full_name, role, tenant_id, is_platform_admin, partner_id FROM users WHERE id = $1::uuid",
+        "SELECT u.id, u.email, u.full_name, u.role, u.tenant_id, u.is_platform_admin, u.partner_id, t.slug as tenant_slug "
+        "FROM users u LEFT JOIN tenants t ON u.tenant_id = t.id WHERE u.id = $1::uuid",
         current_user["sub"],
     )
     if not user:
