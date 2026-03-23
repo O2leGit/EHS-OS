@@ -60,6 +60,7 @@ function mapIncidentToMatrix(severity: string): { row: number; col: number } {
 export default function RiskMatrixPage({ token }: RiskMatrixPageProps) {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCell, setSelectedCell] = useState<string | null>(null);
 
   useEffect(() => {
     api<Incident[]>("/api/incidents/", { token })
@@ -68,12 +69,15 @@ export default function RiskMatrixPage({ token }: RiskMatrixPageProps) {
       .finally(() => setLoading(false));
   }, [token]);
 
-  // Build cell counts from incidents
+  // Build cell counts and incident lists from incidents
   const cellCounts: Record<string, number> = {};
+  const cellIncidents: Record<string, Incident[]> = {};
   incidents.forEach((inc) => {
     const pos = mapIncidentToMatrix(inc.severity);
     const key = `${pos.row}-${pos.col}`;
     cellCounts[key] = (cellCounts[key] || 0) + 1;
+    if (!cellIncidents[key]) cellIncidents[key] = [];
+    cellIncidents[key].push(inc);
   });
 
   // Build risk register entries
