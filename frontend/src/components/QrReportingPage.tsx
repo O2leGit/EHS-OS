@@ -20,20 +20,16 @@ export default function QrReportingPage({ token }: QrReportingPageProps) {
   const [copied, setCopied] = useState(false);
 
   const fetchQrData = useCallback(() => {
-    api<{ full_name: string; role: string; tenant_slug?: string }>("/api/auth/me", { token })
+    api<{ full_name: string; role: string; tenant_slug?: string; tenant?: { slug?: string } }>("/api/auth/me", { token })
       .then((me) => {
-        const slug = (me as any).tenant_slug || (me as any).tenant?.slug;
+        const slug = me.tenant_slug || me.tenant?.slug;
         if (slug) {
           setTenantSlug(slug);
-          api<{ url: string }>(`/api/admin/qr-codes/${slug}`, { token })
-            .then((data) => {
-              setReportUrl(data.url);
-              setLoading(false);
-            })
-            .catch(() => {
-              setError(true);
-              setLoading(false);
-            });
+          // Build the anonymous report URL client-side - no backend endpoint needed
+          const baseUrl = window.location.origin;
+          const url = `${baseUrl}/?report=true&tenant=${slug}`;
+          setReportUrl(url);
+          setLoading(false);
         } else {
           setError(true);
           setLoading(false);
