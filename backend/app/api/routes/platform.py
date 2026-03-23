@@ -32,6 +32,8 @@ class TenantCreateRequest(BaseModel):
     brand_color_accent: str = "#2ECC71"
     logo_url: Optional[str] = None
     partner_id: Optional[str] = None
+    generate_demo_data: bool = True
+    num_incidents: int = 20
 
 
 @router.get("/tenants")
@@ -103,11 +105,18 @@ async def create_tenant(body: TenantCreateRequest, db=Depends(get_db), admin=Dep
         )
         users_created.append({"email": email, "password": "demo123", "role": role})
 
+    # Generate demo data if requested
+    demo_stats = None
+    if body.generate_demo_data:
+        from app.services.demo_data import generate_demo_data
+        demo_stats = await generate_demo_data(tenant_id, body.industry, body.num_incidents)
+
     return {
         "id": tenant_id,
         "name": body.name,
         "slug": body.slug,
         "users": users_created,
+        "demo_data": demo_stats,
     }
 
 

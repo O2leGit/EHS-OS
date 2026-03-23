@@ -488,7 +488,7 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
             {createResult ? (
               <div>
                 <h3 className="text-lg font-bold text-white mb-4">Tenant Created</h3>
-                <div className="bg-[#1e293b]/50 rounded-lg p-4 mb-4">
+                <div className="bg-[#1e293b]/50 rounded-lg p-4 mb-3">
                   <p className="text-xs text-gray-400 mb-2">Default Credentials</p>
                   {createResult.users.map((u) => (
                     <div key={u.email} className="flex items-center justify-between py-1.5 border-b border-[#1e293b]/50 last:border-0">
@@ -497,6 +497,16 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
                     </div>
                   ))}
                 </div>
+                {(createResult as any).demo_data && (
+                  <div className="bg-green-900/30 border border-green-800/50 rounded-lg p-3 mb-3">
+                    <p className="text-xs text-green-400 font-medium mb-1">Demo Data Generated</p>
+                    <p className="text-xs text-green-300/70">
+                      {(createResult as any).demo_data.sites_created} sites,{" "}
+                      {(createResult as any).demo_data.incidents_created} incidents,{" "}
+                      {(createResult as any).demo_data.capas_created} CAPAs
+                    </p>
+                  </div>
+                )}
                 <button onClick={() => setShowCreate(false)} className="w-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
                   Done
                 </button>
@@ -539,6 +549,9 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
                       <option value="biotech">Biotechnology</option>
                       <option value="medical_device">Medical Device</option>
                       <option value="chemical">Chemical</option>
+                      <option value="restaurant">Restaurant / Food Service</option>
+                      <option value="fishing">Fishing / Marine</option>
+                      <option value="professional_services">Professional Services / Office</option>
                       <option value="general_manufacturing">General Manufacturing</option>
                     </select>
                   </div>
