@@ -6,6 +6,7 @@ import { setAuth, getToken, clearAuth } from "@/lib/auth";
 import Dashboard from "@/components/Dashboard";
 import PlatformDashboard from "@/components/PlatformDashboard";
 import PartnerDashboard from "@/components/PartnerDashboard";
+import AnonymousReportPage from "@/components/AnonymousReportPage";
 
 const RETURN_TOKEN_KEY = "ehs_return_token";
 const VIEWING_TENANT_KEY = "ehs_viewing_tenant";
@@ -30,6 +31,24 @@ export default function Home() {
   const [viewType, setViewType] = useState<string | null>(null);
   const [viewingTenant, setViewingTenant] = useState<string | null>(null);
   const [showDemo, setShowDemo] = useState(false);
+  const [anonymousTenant, setAnonymousTenant] = useState<string | null>(null);
+
+  // Check for anonymous report URL patterns (QR code scan)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      // ?report=true&tenant=XXX
+      if (params.get("report") === "true" && params.get("tenant")) {
+        setAnonymousTenant(params.get("tenant"));
+        return;
+      }
+      // /report/{tenant_slug} path pattern
+      const match = window.location.pathname.match(/^\/report\/([^/]+)\/?$/);
+      if (match) {
+        setAnonymousTenant(match[1]);
+      }
+    }
+  }, []);
 
   // Check for ?demo=true URL param
   useEffect(() => {
@@ -122,6 +141,11 @@ export default function Home() {
   const returnLabel = typeof window !== "undefined" && localStorage.getItem(RETURN_VIEW_KEY) === "partner"
     ? "Return to Dashboard"
     : "Return to Platform Admin";
+
+  // If anonymous report mode (via QR code scan), render report page directly
+  if (anonymousTenant) {
+    return <AnonymousReportPage tenantSlug={anonymousTenant} />;
+  }
 
   if (token && viewType) {
     if (viewType === "platform") {

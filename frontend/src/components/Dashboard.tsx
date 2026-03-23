@@ -15,6 +15,8 @@ import RiskMatrixPage from "./RiskMatrixPage";
 import ChatPanel from "./ChatPanel";
 import InspectionsPage from "./InspectionsPage";
 import ComingSoonPage from "./ComingSoonPage";
+import QrReportingPage from "./QrReportingPage";
+import OnboardingChecklist from "./OnboardingChecklist";
 
 export interface TenantBranding {
   brand_name: string;
@@ -32,7 +34,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-type Page = "dashboard" | "documents" | "incidents" | "capas" | "inspections" | "risk" | "features" | "admin" | "reports" | "training" | "sds" | "audits" | "permits";
+type Page = "dashboard" | "documents" | "incidents" | "capas" | "inspections" | "risk" | "features" | "admin" | "reports" | "training" | "sds" | "audits" | "permits" | "qr-reporting";
 
 export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
@@ -43,6 +45,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [sites, setSites] = useState<{id: string; name: string; code: string}[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [branding, setBranding] = useState<TenantBranding | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [tenantSlug, setTenantSlug] = useState<string>("");
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     const id = Date.now();
@@ -51,8 +55,26 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   };
 
   useEffect(() => {
-    api<{ full_name: string; role: string }>("/api/auth/me", { token })
-      .then(setUser)
+    api<{ full_name: string; role: string; tenant_slug?: string; is_platform_admin?: boolean; partner_id?: string | null }>("/api/auth/me", { token })
+      .then((me) => {
+        setUser(me);
+        // Determine tenant slug and onboarding eligibility
+        const slug = (me as Record<string, unknown>).tenant_slug as string || "";
+        setTenantSlug(slug);
+        if (
+          slug &&
+          !me.is_platform_admin &&
+          me.role !== "partner" &&
+          typeof window !== "undefined"
+        ) {
+          const params = new URLSearchParams(window.location.search);
+          const isDemo = params.get("demo") === "true";
+          const alreadyComplete = localStorage.getItem(`ehs_onboarding_complete_${slug}`) === "true";
+          if (!isDemo && !alreadyComplete) {
+            setShowOnboarding(true);
+          }
+        }
+      })
       .catch(() => {
         clearAuth();
         onLogout();
@@ -186,6 +208,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         return <FeaturesPage />;
       case "admin":
         return <AdminPage token={token} userRole={user?.role || ""} />;
+      case "qr-reporting":
+        return <QrReportingPage token={token} />;
       default:
         return <DashboardHome token={token} onNavigate={(p) => setCurrentPage(p as Page)} onOpenChat={handleOpenChat} branding={branding} />;
     }
@@ -234,6 +258,19 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           onNavigate={(p) => setCurrentPage(p as Page)}
           initialMessage={chatInitialMessage}
           onInitialMessageSent={() => setChatInitialMessage(undefined)}
+        />
+      )}
+
+      {/* Onboarding checklist modal */}
+      {showOnboarding && tenantSlug && (
+        <OnboardingChecklist
+          tenantSlug={tenantSlug}
+          branding={branding}
+          onClose={() => setShowOnboarding(false)}
+          onNavigate={(page) => {
+            setShowOnboarding(false);
+            setCurrentPage(page as Page);
+          }}
         />
       )}
 

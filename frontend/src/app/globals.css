@@ -12,6 +12,111 @@
   }
 }
 
+/* ===== Board Report Print Stylesheet ===== */
+@media print {
+  body.printing-dashboard {
+    background: white !important;
+    color: black !important;
+  }
+  /* Hide non-printable elements */
+  body.printing-dashboard nav,
+  body.printing-dashboard aside,
+  body.printing-dashboard [class*="sidebar"],
+  body.printing-dashboard [class*="chat-panel"],
+  body.printing-dashboard [class*="chat-toggle"],
+  body.printing-dashboard .no-print,
+  body.printing-dashboard .no-print-divider,
+  body.printing-dashboard .animate-pulse {
+    display: none !important;
+  }
+  /* Full-width dashboard content */
+  body.printing-dashboard .dashboard-content {
+    margin: 0 !important;
+    padding: 20px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  body.printing-dashboard main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+  /* Make cards print-friendly */
+  body.printing-dashboard [class*="bg-navy"] {
+    background: white !important;
+    border: 1px solid #e5e7eb !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.printing-dashboard [class*="bg-gradient"] {
+    background: #f9fafb !important;
+    color: black !important;
+  }
+  body.printing-dashboard [class*="text-gray"] {
+    color: #374151 !important;
+  }
+  body.printing-dashboard [class*="text-white"] {
+    color: black !important;
+  }
+  body.printing-dashboard [class*="border-navy"] {
+    border-color: #e5e7eb !important;
+  }
+  /* Keep meaningful colored text */
+  body.printing-dashboard .text-green-400,
+  body.printing-dashboard .text-green-300,
+  body.printing-dashboard [class*="text-emerald"] {
+    color: #16a34a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.printing-dashboard .text-red-400,
+  body.printing-dashboard .text-red-300 {
+    color: #dc2626 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.printing-dashboard .text-amber-400,
+  body.printing-dashboard .text-amber-300,
+  body.printing-dashboard .text-yellow-300 {
+    color: #d97706 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.printing-dashboard .text-cyan-400,
+  body.printing-dashboard .text-cyan-300,
+  body.printing-dashboard .text-blue-400 {
+    color: #0891b2 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Add report header */
+  body.printing-dashboard .dashboard-content::before {
+    content: "EHS Executive Dashboard Report";
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: black;
+    margin-bottom: 4px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #10B981;
+  }
+  /* Add generated timestamp */
+  body.printing-dashboard .dashboard-content::after {
+    content: "Generated: " attr(data-print-date);
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: -4px;
+    margin-bottom: 16px;
+    order: -1;
+  }
+  /* Page settings */
+  @page {
+    size: landscape;
+    margin: 0.5in;
+  }
+}
+
 @layer components {
   .card {
     @apply bg-navy-800 rounded-xl border border-navy-700 p-6;

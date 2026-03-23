@@ -326,16 +326,26 @@ export default function AdminPage({ token, userRole }: AdminPageProps) {
 
       {/* QR Code Generator */}
       <div className="card p-6">
-        <h2 className="text-lg font-semibold mb-4">QR Code - Public Incident Reporting</h2>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-green-500/15 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">QR Code - Anonymous Reporting</h2>
+            <p className="text-xs text-gray-500">Print and post in visible locations at your facility</p>
+          </div>
+        </div>
         <p className="text-sm text-gray-400 mb-4">
-          Generate a public URL for anonymous incident reporting. Print the QR code and post it in work areas
-          so employees can quickly report hazards or incidents from their phone.
+          Employees can scan this QR code with any smartphone camera to submit anonymous safety reports.
+          No login or app download required.
         </p>
 
         {qrData ? (
           <div className="bg-navy-800 rounded-lg border border-navy-700 p-6">
             <label className="block text-sm text-gray-400 mb-2">Public Reporting URL</label>
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-6">
               <code className="flex-1 bg-navy-900 text-safe px-4 py-2.5 rounded font-mono text-sm break-all">
                 {qrData.url}
               </code>
@@ -353,12 +363,77 @@ export default function AdminPage({ token, userRole }: AdminPageProps) {
                 Copy
               </button>
             </div>
-            <div className="bg-white rounded-lg p-6 inline-block">
-              <QrCodeCanvas value={qrData.url} size={200} />
+
+            <div className="flex flex-col md:flex-row gap-6 items-start">
+              {/* QR Code */}
+              <div>
+                <div id="qr-print-area" className="bg-white rounded-lg p-6 inline-block">
+                  <QrCodeCanvas value={qrData.url} size={220} />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex-1 space-y-3">
+                <button
+                  onClick={() => {
+                    const printWindow = window.open("", "_blank");
+                    if (!printWindow) return;
+                    printWindow.document.write(`
+                      <html><head><title>QR Code - Anonymous Safety Reporting</title>
+                      <style>
+                        body { font-family: -apple-system, system-ui, sans-serif; text-align: center; padding: 40px; }
+                        h1 { font-size: 28px; margin-bottom: 8px; }
+                        h2 { font-size: 18px; color: #666; font-weight: normal; margin-bottom: 30px; }
+                        .qr-container { display: inline-block; padding: 20px; border: 3px solid #000; border-radius: 16px; margin-bottom: 20px; }
+                        .instructions { font-size: 16px; color: #444; max-width: 400px; margin: 20px auto; line-height: 1.5; }
+                        .shield { font-size: 14px; color: #2563eb; margin-top: 16px; }
+                        .url { font-size: 11px; color: #999; margin-top: 20px; word-break: break-all; }
+                      </style></head><body>
+                      <h1>Report a Safety Concern</h1>
+                      <h2>Scan the QR code below with your phone camera</h2>
+                      <div class="qr-container">
+                        <img src="${getQrImageUrl(qrData.url, 300)}" width="300" height="300" alt="QR Code" />
+                      </div>
+                      <p class="instructions">Point your smartphone camera at this QR code to open the safety reporting form. No app download needed.</p>
+                      <p class="shield">Your identity is completely anonymous.</p>
+                      <p class="url">${qrData.url}</p>
+                      </body></html>
+                    `);
+                    printWindow.document.close();
+                    printWindow.onload = () => { printWindow.print(); };
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-navy-700 hover:bg-navy-600 border border-navy-600 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Print QR Poster
+                </button>
+
+                <button
+                  onClick={() => {
+                    const link = document.createElement("a");
+                    link.href = getQrImageUrl(qrData.url, 500);
+                    link.download = `safety-qr-code-${qrData.tenant_slug}.png`;
+                    link.click();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-navy-700 hover:bg-navy-600 border border-navy-600 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download QR Image
+                </button>
+
+                <div className="bg-navy-900/50 border border-navy-700 rounded-lg p-3 mt-4">
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    Print and post this QR code in visible locations at your facility -- break rooms,
+                    near exits, safety boards, and common areas. Employees can scan with any smartphone
+                    camera to submit anonymous safety reports instantly.
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-3">
-              Scan this QR code with any smartphone camera to open the incident reporting form.
-            </p>
           </div>
         ) : qrError ? (
           <div className="bg-navy-800 rounded-lg border border-red-500/30 p-6 text-center text-red-400">
@@ -372,6 +447,11 @@ export default function AdminPage({ token, userRole }: AdminPageProps) {
       </div>
     </div>
   );
+}
+
+/** Generate a QR code image URL using the qrserver.com API */
+function getQrImageUrl(data: string, size: number = 300): string {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}&margin=10`;
 }
 
 /**

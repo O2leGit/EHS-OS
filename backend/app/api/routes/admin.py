@@ -74,9 +74,10 @@ async def list_users(db=Depends(get_db), admin: dict = Depends(require_admin)):
 
 @router.get("/qr-codes/{tenant_slug}")
 async def get_qr_code(tenant_slug: str, admin: dict = Depends(require_admin)):
-    base_url = "https://ehs-os.netlify.app/report"
-    report_url = f"{base_url}/{tenant_slug}"
+    base_url = "https://ehs-os.netlify.app"
+    report_url = f"{base_url}/?report=true&tenant={tenant_slug}"
     return {
         "url": report_url,
+        "tenant_slug": tenant_slug,
         "qr_data": report_url,
     }

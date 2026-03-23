@@ -459,8 +459,19 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
 
   const activeAlerts = alerts.filter(a => !dismissedAlerts.includes(a.id));
 
+  const handleExportPDF = () => {
+    // Set print date on the wrapper
+    const wrapper = document.getElementById('dashboard-print-wrapper');
+    if (wrapper) {
+      wrapper.setAttribute('data-print-date', new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+    }
+    document.body.classList.add('printing-dashboard');
+    window.print();
+    setTimeout(() => document.body.classList.remove('printing-dashboard'), 1000);
+  };
+
   return (
-    <div>
+    <div id="dashboard-print-wrapper" className="dashboard-content">
       {/* Alert Banner */}
       {activeAlerts.length > 0 && (
         <div className="bg-red-900/30 border border-red-500/40 rounded-xl p-4 mb-6 animate-slide-down">
@@ -519,6 +530,20 @@ export default function DashboardHome({ token, onNavigate, onOpenChat, selectedS
           <h1 className="text-2xl font-bold">EHS Management System</h1>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportPDF}
+            className="no-print bg-navy-700 hover:bg-navy-600 text-gray-300 hover:text-white border border-navy-600 rounded-lg px-3 py-1.5 text-sm flex items-center gap-2 transition-colors"
+            title="Export dashboard as PDF"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <polyline points="9 15 12 18 15 15" />
+            </svg>
+            Board Report
+          </button>
+          <div className="h-4 w-px bg-navy-700 no-print-divider" />
           {branding?.partner_name && (
             <>
               <div className="flex items-center gap-2">

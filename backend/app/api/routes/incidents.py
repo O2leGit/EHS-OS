@@ -1,6 +1,8 @@
 import base64
 import json
 import os
+import time
+from collections import defaultdict
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel
@@ -11,6 +13,23 @@ from app.core.database import get_db, get_pool
 from app.core.auth import get_current_user
 
 router = APIRouter()
+
+# Rate limiting for anonymous reports: max 10 per IP per hour
+_rate_limit_store: dict[str, list[float]] = defaultdict(list)
+RATE_LIMIT_MAX = 10
+RATE_LIMIT_WINDOW = 3600  # 1 hour in seconds
+
+
+def _check_rate_limit(ip: str) -> bool:
+    """Returns True if request is allowed, False if rate limited."""
+    now = time.time()
+    # Clean old entries
+    _rate_limit_store[ip] = [t for t in _rate_limit_store[ip] if now - t < RATE_LIMIT_WINDOW]
+    if len(_rate_limit_store[ip]) >= RATE_LIMIT_MAX:
+        return False
+    _rate_limit_store[ip].append(now)
+    return True
+
 
 PHOTO_ANALYSIS_PROMPT = """You are an EHS incident analysis expert for a life sciences facility.
 Analyze this workplace photo and extract incident/hazard information.
@@ -26,6 +45,11 @@ Return JSON only, no other text:
   "regulatory_references": ["relevant OSHA/EPA standards that may apply"],
   "confidence": 0.0-1.0
 }"""
+
+ANONYMOUS_CATEGORIES = [
+    "unsafe_condition", "unsafe_behavior", "near_miss", "equipment_issue",
+    "chemical_spill", "ergonomic", "fire_electrical", "other",
+]
 
 
 class IncidentCreate(BaseModel):
@@ -45,6 +69,15 @@ class PublicIncidentReport(BaseModel):
     location: Optional[str] = None
     reported_by: Optional[str] = None
     is_anonymous: bool = True
+    tenant_slug: str
+
+
+class AnonymousIncidentReport(BaseModel):
+    category: str
+    severity: str = "medium"
+    description: str
+    location: Optional[str] = None
+    photo_url: Optional[str] = None
     tenant_slug: str
 
 
@@ -119,6 +152,93 @@ async def public_report(inc: PublicIncidentReport):
         return {"id": str(row["id"]), "incident_number": row["incident_number"], "message": "Report submitted. Thank you."}
 
 
+@router.post("/anonymous")
+async def anonymous_report(inc: AnonymousIncidentReport, request: Request):
+    """Accept anonymous incident reports from QR code scans. No authentication required."""
+    # Rate limit by IP
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Too many reports. Please try again later.")
+
+    # Validate category
+    if inc.category not in ANONYMOUS_CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"Invalid category. Must be one of: {', '.join(ANONYMOUS_CATEGORIES)}")
+
+    # Validate severity
+    if inc.severity not in ("low", "medium", "high", "critical"):
+        raise HTTPException(status_code=400, detail="Invalid severity. Must be low, medium, high, or critical.")
+
+    # Validate description length
+    if not inc.description or len(inc.description.strip()) < 20:
+        raise HTTPException(status_code=400, detail="Description must be at least 20 characters.")
+
+    # Map category to readable title
+    category_labels = {
+        "unsafe_condition": "Unsafe Condition",
+        "unsafe_behavior": "Unsafe Behavior",
+        "near_miss": "Near Miss",
+        "equipment_issue": "Equipment Issue",
+        "chemical_spill": "Chemical/Spill",
+        "ergonomic": "Ergonomic Hazard",
+        "fire_electrical": "Fire/Electrical Hazard",
+        "other": "Other Safety Concern",
+    }
+    title = f"Anonymous Report: {category_labels.get(inc.category, inc.category)}"
+
+    # Map category to incident_type
+    category_to_type = {
+        "unsafe_condition": "hazard",
+        "unsafe_behavior": "hazard",
+        "near_miss": "near_miss",
+        "equipment_issue": "hazard",
+        "chemical_spill": "environmental",
+        "ergonomic": "hazard",
+        "fire_electrical": "hazard",
+        "other": "observation",
+    }
+    incident_type = category_to_type.get(inc.category, "observation")
+
+    pool = await get_pool()
+    async with pool.acquire() as db:
+        tenant = await db.fetchrow("SELECT id FROM tenants WHERE slug = $1", inc.tenant_slug)
+        if not tenant:
+            raise HTTPException(status_code=400, detail="Invalid site")
+
+        count = await db.fetchval(
+            "SELECT COUNT(*) FROM incidents WHERE tenant_id = $1", tenant["id"]
+        )
+        incident_number = f"INC-{count + 1:04d}"
+
+        row = await db.fetchrow(
+            """INSERT INTO incidents (tenant_id, incident_number, incident_type, severity, title,
+                                      description, location, reported_by, is_anonymous)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               RETURNING id, incident_number""",
+            tenant["id"], incident_number, incident_type, inc.severity,
+            title, inc.description.strip(), inc.location, "Anonymous Employee", True,
+        )
+
+        # Send notifications
+        try:
+            from app.services.notifications import send_incident_notifications
+            import asyncio
+            asyncio.create_task(send_incident_notifications(db, tenant["id"], {
+                "incident_number": incident_number,
+                "incident_type": incident_type,
+                "severity": inc.severity,
+                "title": title,
+                "location": inc.location,
+            }))
+        except Exception:
+            pass
+
+        return {
+            "id": str(row["id"]),
+            "incident_number": row["incident_number"],
+            "message": "Your anonymous report has been submitted. Thank you for helping keep the workplace safe.",
+        }
+
+
 @router.get("/alerts")
 async def get_incident_alerts(db=Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Get high-severity open incidents from last 48 hours for dashboard banner."""
@@ -139,13 +259,13 @@ async def get_incident_alerts(db=Depends(get_db), current_user: dict = Depends(g
 async def list_incidents(site_id: str = None, db=Depends(get_db), current_user: dict = Depends(get_current_user)):
     if site_id:
         rows = await db.fetch(
-            """SELECT id, incident_number, incident_type, severity, title, status, location, occurred_at, created_at
+            """SELECT id, incident_number, incident_type, severity, title, status, location, occurred_at, created_at, is_anonymous
                FROM incidents WHERE tenant_id = $1::uuid AND site_id = $2::uuid ORDER BY created_at DESC""",
             current_user["tenant_id"], site_id,
         )
     else:
         rows = await db.fetch(
-            """SELECT id, incident_number, incident_type, severity, title, status, location, occurred_at, created_at
+            """SELECT id, incident_number, incident_type, severity, title, status, location, occurred_at, created_at, is_anonymous
                FROM incidents WHERE tenant_id = $1::uuid ORDER BY created_at DESC""",
             current_user["tenant_id"],
         )
