@@ -550,12 +550,16 @@ export default function PlatformDashboard({ token, onLogout, onLoginAs }: Platfo
                       <option value="chemical">Chemical</option>
                       <option value="construction">Construction</option>
                       <option value="fishing">Fishing / Marine</option>
+                      <option value="food_processing">Food Processing / Distribution</option>
+                      <option value="healthcare">Healthcare / Hospital</option>
                       <option value="hospitality">Hospitality / Hotel / Resort</option>
                       <option value="landscaping">Landscaping / Lawn Care</option>
                       <option value="medical_device">Medical Device</option>
                       <option value="pharma">Pharmaceutical</option>
                       <option value="professional_services">Professional Services / Office</option>
                       <option value="restaurant">Restaurant / Food Service</option>
+                      <option value="roofing_solar">Roofing / Solar Installation</option>
+                      <option value="warehousing">Warehousing / Logistics</option>
                       <option value="general_manufacturing">General Manufacturing</option>
                     </select>
                   </div>
