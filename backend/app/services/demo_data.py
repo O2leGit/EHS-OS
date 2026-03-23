@@ -598,8 +598,59 @@ async def generate_demo_data(tenant_id: str, industry: str, num_incidents: int =
                     now - timedelta(days=random.randint(5, 60)),
                 )
 
+        # Create demo documents with framework coverage analysis
+        demo_docs = [
+            ("Corporate EHS Policy Manual.pdf", "pdf", 2456000, "covered", "1", "EHS Policy", None, "high",
+             "Comprehensive corporate EHS policy covering management commitment, responsibilities, and objectives. Aligns with ISO 45001 Clause 5."),
+            ("Job Hazard Analysis - Operations.pdf", "pdf", 1100000, "covered", "2", "Hazard Identification", "200", "high",
+             "Detailed JHAs for primary operational tasks including equipment operation, material handling, and maintenance activities."),
+            ("Emergency Action Plan.pdf", "pdf", 890000, "covered", "3", "Emergency Preparedness", "300", "high",
+             "Site-specific emergency procedures including evacuation routes, assembly points, and emergency contact protocols."),
+            ("Lockout Tagout Procedures.pdf", "pdf", 1900000, "covered", "3", "Machine Safety", "200", "medium",
+             "LOTO procedures for all energy-isolating devices per OSHA 29 CFR 1910.147. Includes authorized employee list."),
+            ("Hazard Communication Program.pdf", "pdf", 967000, "covered", "3", "Chemical Safety", "200", "medium",
+             "GHS-compliant HazCom program with SDS management, container labeling, and employee training requirements."),
+            ("Safety Training Records 2025.xlsx", "xlsx", 345000, "partial", "4", "Training", "100", "low",
+             "Training completion records for 2025. Missing documentation for new hires in Q4."),
+            ("Incident Investigation SOP.pdf", "pdf", 789000, "covered", "3", "Incident Management", "300", "medium",
+             "Standard operating procedure for incident investigation including root cause analysis methodology."),
+            ("PPE Assessment Report.pdf", "pdf", 534000, "partial", "3", "PPE", "200", "medium",
+             "PPE hazard assessment per OSHA 29 CFR 1910.132. Some job classifications missing updated assessments."),
+            ("Fire Prevention Plan.pdf", "pdf", 456000, "covered", "3", "Fire Safety", "300", "low",
+             "Fire prevention plan covering ignition sources, housekeeping, and hot work permit procedures."),
+            ("Ergonomic Assessment Report.pdf", "pdf", 2300000, "gap", "3", "Ergonomics", "200", "high",
+             "No comprehensive ergonomics program documented. Active injuries demonstrate uncontrolled risk."),
+            ("Respiratory Protection Program.pdf", "pdf", 1200000, "partial", "3", "Respiratory Protection", "200", "medium",
+             "Written RPP exists but medical evaluations and fit testing records are incomplete for 30% of users."),
+            ("Contractor Safety Requirements.pdf", "pdf", 678000, "gap", "3", "Contractor Safety", "300", "high",
+             "No formal contractor pre-qualification or safety orientation program documented."),
+        ]
+
+        docs_created = 0
+        for filename, ftype, fsize, cov_status, tier, category, series, risk, reasoning in demo_docs:
+            existing_doc = await db.fetchrow(
+                "SELECT id FROM documents WHERE tenant_id = $1::uuid AND filename = $2", tenant_id, filename)
+            if not existing_doc:
+                doc_row = await db.fetchrow(
+                    """INSERT INTO documents (tenant_id, filename, file_path, file_type, file_size, status, created_at)
+                       VALUES ($1::uuid, $2, $3, $4, $5, 'analyzed', $6) RETURNING id""",
+                    tenant_id, filename, f"/uploads/{filename}", ftype, fsize,
+                    now - timedelta(days=random.randint(10, 90)),
+                )
+                # Add framework coverage analysis
+                await db.execute(
+                    """INSERT INTO document_analyses (document_id, tenant_id, chunk_index, chunk_text,
+                                                      framework_tier, framework_category, framework_series,
+                                                      coverage_status, risk_severity, ai_reasoning)
+                       VALUES ($1, $2::uuid, 1, $3, $4, $5, $6, $7, $8, $9)""",
+                    doc_row["id"], tenant_id, f"Analysis of {filename}",
+                    tier, category, series, cov_status, risk, reasoning,
+                )
+                docs_created += 1
+
         return {
             "sites_created": len(site_ids),
             "incidents_created": len(created_incident_ids),
             "capas_created": len(capa_titles),
+            "documents_created": docs_created,
         }

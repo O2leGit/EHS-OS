@@ -193,6 +193,17 @@ async def update_tenant(tenant_id: str, body: TenantUpdateRequest, db=Depends(ge
     return {"updated": True, "tenant_id": tenant_id}
 
 
+@router.post("/tenants/{tenant_id}/seed-data")
+async def seed_tenant_data(tenant_id: str, db=Depends(get_db), admin=Depends(require_platform_admin)):
+    """Regenerate demo data (documents, framework coverage) for an existing tenant."""
+    tenant = await db.fetchrow("SELECT id, name FROM tenants WHERE id = $1::uuid", tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    from app.services.demo_data import generate_demo_data
+    stats = await generate_demo_data(tenant_id, "general_manufacturing", 0)
+    return {"tenant": tenant["name"], "seeded": stats}
+
+
 @router.delete("/tenants/{tenant_id}")
 async def delete_tenant(tenant_id: str, db=Depends(get_db), admin=Depends(require_platform_admin)):
     """Delete a tenant and all its data."""
