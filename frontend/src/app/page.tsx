@@ -32,6 +32,7 @@ export default function Home() {
   const [viewingTenant, setViewingTenant] = useState<string | null>(null);
   const [showDemo, setShowDemo] = useState(false);
   const [anonymousTenant, setAnonymousTenant] = useState<string | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   // Check for anonymous report URL patterns (QR code scan)
   useEffect(() => {
@@ -156,6 +157,22 @@ export default function Home() {
     }
     return (
       <div className="flex flex-col h-screen">
+        {isDemoMode && !viewingTenant && (
+          <div className="bg-gradient-to-r from-emerald-900/80 to-teal-900/80 border-b border-emerald-700/50 px-4 py-2 flex items-center justify-between text-sm z-50">
+            <div className="flex items-center gap-2">
+              <span className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">Demo</span>
+              <span className="text-emerald-200">You&apos;re exploring a live demo with sample data</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a href="mailto:chris@cotoole.com?subject=EHS-OS Demo Interest" className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+                Request Access
+              </a>
+              <button onClick={handleLogout} className="bg-emerald-800/50 hover:bg-emerald-700/50 text-emerald-300 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+                Exit Demo
+              </button>
+            </div>
+          </div>
+        )}
         {viewingTenant && (
           <div className="bg-blue-900/80 border-b border-blue-700 px-4 py-2 flex items-center justify-between text-sm z-50">
             <span className="text-blue-200">
@@ -194,6 +211,22 @@ export default function Home() {
     }
   };
 
+  // Public demo explore handler - no credentials needed
+  const handleExploreDemo = async () => {
+    setQuickLogging("demo");
+    setLoading(true);
+    setError("");
+    try {
+      await doLogin("admin@bio-techne.com", "demo123");
+      setIsDemoMode(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Demo unavailable");
+    } finally {
+      setQuickLogging(null);
+      setLoading(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -225,6 +258,27 @@ export default function Home() {
             <span className="text-xs font-semibold text-gray-400">ScaleOS</span>
           </div>
         </div>
+
+        {/* Explore Demo - always visible */}
+        <button
+          onClick={handleExploreDemo}
+          disabled={loading}
+          className="w-full mb-4 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-sm transition-all shadow-lg shadow-emerald-900/30 hover:shadow-emerald-800/40 flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {quickLogging === "demo" ? (
+            <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )}
+          Explore Demo
+        </button>
+        <p className="text-[10px] text-gray-500 text-center -mt-2 mb-4">No account needed. See real EHS data instantly.</p>
 
         {/* Quick Login Buttons - only visible with ?demo=true */}
         {showDemo && (
@@ -264,6 +318,12 @@ export default function Home() {
             </div>
           </>
         )}
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px bg-[#1e293b]" />
+          <span className="text-[10px] text-gray-600 uppercase tracking-wider">or sign in with credentials</span>
+          <div className="flex-1 h-px bg-[#1e293b]" />
+        </div>
 
         <form onSubmit={handleLogin} className="space-y-3">
           {error && (
