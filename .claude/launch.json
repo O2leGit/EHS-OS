@@ -3,10 +3,9 @@
   "configurations": [
     {
       "name": "ehs-frontend",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["next", "dev", "-p", "3001"],
-      "port": 3001,
-      "cwd": "frontend"
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd C:\\Users\\Chris\\Documents\\EHS-OS\\frontend && npx next dev -p 3001"],
+      "port": 3001
     }
   ]
 }
